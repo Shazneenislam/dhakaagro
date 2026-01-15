@@ -1,36 +1,108 @@
-import React from 'react';
+// components/HeroSection.js
+import React from "react";
 
 const HeroSection = () => {
-  const heroItems = [
-    { title: 'Farm Fresh Vegetable', subtitle: 'Sale 30% Off', buttonText: 'BUY NOW', bgColor: 'bg-green-100', textColor: 'text-green-800' },
-    { title: 'Fresh Meat', subtitle: 'Upto 13% off', buttonText: 'BUY NOW', bgColor: 'bg-red-100', textColor: 'text-red-800' },
-    { title: 'Fresh Fruit Drink', subtitle: '15% off in Fresh', buttonText: 'BUY NOW', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
-  ];
-
   return (
-    <section className="py-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {heroItems.map((item, index) => (
-          <div key={index} className={`${item.bgColor} rounded-lg p-6 flex flex-col justify-between h-64`}>
-            <div>
-              <h3 className={`text-2xl font-bold ${item.textColor} mb-2`}>{item.title}</h3>
-              <p className={`text-lg ${item.textColor} opacity-80`}>{item.subtitle}</p>
+    <section className="bg-transparent flex items-center justify-center p-">
+      <div className="bg-transparent container max-w-10xl mx-auto">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Main Hero Card */}
+          <div className="relative bg-[#f8fbf0] rounded-3xl p-5 md:p-7 shadow-[0px_0px_100px_0px_#d6d6d6] w-full lg:w-2/3 overflow-hidden">
+            <div className="bg-[#fe9917] px-3 py-1 inline-flex items-center mt-15 mb-1">
+              <span className="text-white text-[8px] lg:text-sm font-medium tracking-wide">
+                100% ORGANIC PRODUCT
+              </span>
             </div>
-            <button className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-md transition-colors duration-300 self-start">
-              {item.buttonText}
-            </button>
+
+            <div className="w-full md:w-1/2 font-sans-serif">
+              <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                Buy Delicious Produce Enjoy Free Shipping
+              </h1>
+
+              <a
+                href="#"
+                className="mt-6 md:mt-12 inline-flex items-center justify-center rounded-full border border-lime-400 px-3 py-1 text-sm font-medium text-lime-600 shadow-sm hover:bg-white transition-colors"
+              >
+                BUY NOW
+              </a>
+            </div>
+
+            {/* Mobile Image */}
+            <div className="lg:hidden absolute right-0 bottom-0 top-[55%] left-[53%] w-1/2 md:w-1/2 h-48 md:h-64 overflow-hidden pointer-events-none">
+              <img
+                src="img/FruitTag.png"
+                alt="FruitsTag"
+                className="w-full h-auto object-contain"
+              />
+            </div>
+
+            {/* Desktop Image */}
+            <div className="hidden lg:block absolute right-0 top-[20%] bottom-0 w-full md:w-full lg:w-1/2 h-48 md:h-64 lg:h-full overflow-hidden pointer-events-none">
+              <img
+                src="img/FruitTag.png"
+                alt="FruitsTag"
+                className="w-full h-auto object-contain"
+              />
+            </div>
           </div>
-        ))}
-      </div>
-      <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-8 text-center text-white">
-        <h2 className="text-3xl font-bold mb-4">Everyday Fresh & Clean With Our Products</h2>
-        <p className="text-lg mb-6">Food Delivery Service</p>
-        <button className="bg-white text-green-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg text-lg transition-colors duration-300">
-          START SHOPPING
-        </button>
+
+          {/* Side Cards */}
+          <div className="flex flex-col gap-6 w-full lg:w-1/3">
+            {/* Side Card 1 */}
+            <div className="relative bg-[#e5e5e5] rounded-3xl p-6 shadow-[0px_0px_100px_0px_#d6d6d6] h-64 overflow-hidden">
+              <h2 className="text-[#dc0701] text-4xl md:text-3xl font-bold font-serif text-center leading-tight">
+                <span className="block justify-center items-center">Taste of</span>
+                <span className="block justify-center items-center">South Asia</span>
+              </h2>
+
+              <div className="mt-4 items-center justify-center text-center">
+                <a
+                  href="#"
+                  className="inline-flex rounded-full border border-[#dc0701] px-2 py-1 text-sm font-medium text-[#dc0701] shadow-sm hover:bg-white transition-colors"
+                >
+                  BUY NOW
+                </a>
+              </div>
+
+              <img
+                src="img/Food.png"
+                alt="Food"
+                className="absolute right-0 top-[59%] bottom-0 w-full md:w-full object-contain"
+              />
+            </div>
+
+            {/* Side Card 2 */}
+            <div className="relative bg-[#f4ffeb] rounded-3xl p-6 shadow-[0px_0px_100px_0px_#d6d6d6] h-64 overflow-hidden">
+              <div className="bg-[#d0ebb9] px-1 py-0 rounded-full inline-flex items-center">
+                <span className="text-black text-[10px] font-medium tracking-wide px-1 py-1">
+                  100% ORGANIC PRODUCT
+                </span>
+              </div>
+
+              <h2 className="mt-2 text-xl md:text-2xl w-[50%] font-semibold text-gray-900">
+                Buy Delicious Produce Enjoy Free Shopping
+              </h2>
+
+              <div className="mt-1">
+                <a
+                  href="#"
+                  className="mt-6 md:mt-1 inline-flex items-center justify-center rounded-full border border-lime-400 px-3 py-1 text-sm font-medium text-lime-600 shadow-sm hover:bg-white transition-colors"
+                >
+                  BUY NOW
+                </a>
+              </div>
+
+              <img
+                src="img/Vegetable.png"
+                alt="Fresh Vegetables"
+                className="absolute right-0 bottom-0 w-2/3 object-contain"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 };
 
-export default HeroSection;  // Ensure this line is present
+export default HeroSection;
