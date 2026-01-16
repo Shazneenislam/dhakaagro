@@ -8,17 +8,16 @@ const bcrypt = require('bcryptjs');
 // Load env vars
 dotenv.config();
 
-// Connect to database
+// Connect to database - UPDATED: removed deprecated options
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.name}`);
     return conn;
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`❌ Connection Error: ${error.message}`);
+    console.error('Make sure MongoDB is running on localhost:27017');
     process.exit(1);
   }
 };
