@@ -1,126 +1,301 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { X, Star, ShoppingCart, Heart, Package, Truck, Shield } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
+import toast from 'react-hot-toast';
 
-const ProductModal = ({ product, isOpen, onClose, onAddToCart, onBuyNow }) => {
-  if (!isOpen) return null;
+const ProductModal = ({ product, isOpen, onClose }) => {
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  
+  const { addToCart } = useCart();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  
+  if (!isOpen || !product) return null;
+
+  const isWishlisted = isInWishlist(product._id);
+
+  const handleAddToCart = async () => {
+    if (product.stock === 0) {
+      toast.error('Product is out of stock');
+      return;
+    }
+
+    setIsAddingToCart(true);
+    try {
+      await addToCart(product._id, quantity);
+      toast.success('Added to cart successfully');
+    } catch (error) {
+      toast.error(error.message || 'Failed to add to cart');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    try {
+      await addToCart(product._id, quantity);
+      onClose();
+      window.location.href = '/checkout';
+    } catch (error) {
+      toast.error(error.message || 'Failed to proceed to checkout');
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(product._id);
+        toast.success('Removed from wishlist');
+      } else {
+        await addToWishlist(product._id);
+        toast.success('Added to wishlist');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to update wishlist');
+    }
+  };
+
+  const incrementQuantity = () => {
+    if (quantity < product.stock) {
+      setQuantity(quantity + 1);
+    }
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Backdrop */}
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div 
+          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" 
+          onClick={onClose}
+        />
 
-        {/* Modal Content */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              {/* Product Image */}
-              <div className="sm:w-1/2">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-64 object-contain sm:h-96"
-                />
+        {/* Modal Container */}
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full">
+          <div className="bg-white">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">{product.name}</h2>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-6 w-6 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+              {/* Image Gallery */}
+              <div className="space-y-4">
+                {/* Main Image */}
+                <div className="bg-gray-50 rounded-lg overflow-hidden">
+                  <img
+                    src={product.images?.[selectedImage]?.url || 'https://via.placeholder.com/600x600'}
+                    alt={product.name}
+                    className="w-full h-96 object-contain"
+                  />
+                </div>
+                
+                {/* Thumbnails */}
+                {product.images && product.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {product.images.map((image, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImage(index)}
+                        className={`flex-shrink-0 w-20 h-20 border-2 rounded-lg overflow-hidden ${
+                          selectedImage === index 
+                            ? 'border-[#425a8b]' 
+                            : 'border-transparent'
+                        }`}
+                      >
+                        <img
+                          src={image.url}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Product Details */}
-              <div className="mt-4 sm:mt-0 sm:ml-6 sm:w-1/2">
-                <h3 className="text-lg leading-6 font-bold text-[#425a8b] mb-2">
-                  {product.name}
-                </h3>
-                
-                {/* Category */}
-                <div className="text-sm text-gray-500 mb-4">{product.category}</div>
-                
+              <div className="space-y-6">
+                {/* Category & Brand */}
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="px-3 py-1 bg-gray-100 rounded-full">
+                    {product.category?.name || 'Uncategorized'}
+                  </span>
+                  <span className="text-gray-600">Brand: {product.brand || 'Unknown'}</span>
+                </div>
+
                 {/* Rating */}
-                <div className="flex items-center mb-4">
+                <div className="flex items-center gap-2">
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
-                      <svg
+                      <Star
                         key={i}
-                        className={`w-5 h-5 ${i < product.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
+                        className={`h-5 w-5 ${
+                          i < Math.floor(product.rating) 
+                            ? 'fill-yellow-400 text-yellow-400' 
+                            : 'text-gray-300'
+                        }`}
+                      />
                     ))}
                   </div>
-                  <span className="text-gray-500 text-sm ml-2">({product.reviewCount} reviews)</span>
+                  <span className="text-gray-600">
+                    ({product.numReviews || 0} reviews)
+                  </span>
                 </div>
 
                 {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-center">
-                    <span className="text-2xl font-bold text-[#425a8b]">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-bold text-[#425a8b]">
                       ${product.price.toFixed(2)}
                     </span>
-                    {product.originalPrice && (
-                      <span className="text-lg line-through text-[#8c9fc6] ml-3">
-                        ${product.originalPrice.toFixed(2)}
-                      </span>
+                    {product.originalPrice > product.price && (
+                      <>
+                        <span className="text-xl line-through text-gray-400">
+                          ${product.originalPrice.toFixed(2)}
+                        </span>
+                        <span className="px-2 py-1 bg-red-100 text-red-600 text-sm font-bold rounded">
+                          Save {product.discount}%
+                        </span>
+                      </>
                     )}
-                    {product.discount > 0 && (
-                      <span className="ml-3 px-2 py-1 text-sm font-bold text-white bg-red-500 rounded">
-                        Save {product.discount}%
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Inclusive of all taxes
+                  </p>
+                </div>
+
+                {/* Stock Status */}
+                <div className="flex items-center gap-2">
+                  {product.stock > 0 ? (
+                    <>
+                      <div className="w-3 h-3 bg-green-500 rounded-full" />
+                      <span className="text-green-600 font-medium">
+                        In Stock ({product.stock} available)
                       </span>
-                    )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-3 h-3 bg-red-500 rounded-full" />
+                      <span className="text-red-600 font-medium">Out of Stock</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Quantity Selector */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Quantity
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center border border-gray-300 rounded-lg">
+                      <button
+                        onClick={decrementQuantity}
+                        disabled={quantity <= 1}
+                        className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        -
+                      </button>
+                      <span className="px-4 py-2 w-16 text-center">{quantity}</span>
+                      <button
+                        onClick={incrementQuantity}
+                        disabled={quantity >= product.stock}
+                        className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      Max: {product.stock}
+                    </span>
                   </div>
                 </div>
 
                 {/* Description */}
-                <div className="mb-6">
-                  <h4 className="font-semibold text-gray-700 mb-2">Description</h4>
-                  <p className="text-gray-600">{product.description || "No description available."}</p>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-gray-900">Description</h3>
+                  <p className="text-gray-600">{product.description}</p>
                 </div>
 
                 {/* Specifications */}
-                {product.specifications && (
-                  <div className="mb-6">
-                    <h4 className="font-semibold text-gray-700 mb-2">Specifications</h4>
-                    <ul className="text-gray-600">
+                {product.specifications && product.specifications.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-gray-900">Specifications</h3>
+                    <div className="grid grid-cols-2 gap-2">
                       {product.specifications.map((spec, index) => (
-                        <li key={index} className="mb-1">
-                          <span className="font-medium">{spec.label}:</span> {spec.value}
-                        </li>
+                        <div key={index} className="flex justify-between border-b pb-1">
+                          <span className="text-gray-600">{spec.label}</span>
+                          <span className="font-medium">{spec.value}</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
 
+                {/* Features */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Package className="h-4 w-4 text-gray-400" />
+                    <span>Free Shipping</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Truck className="h-4 w-4 text-gray-400" />
+                    <span>Fast Delivery</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-gray-400" />
+                    <span>Quality Guarantee</span>
+                  </div>
+                </div>
+
                 {/* Action Buttons */}
-                <div className="flex space-x-3">
+                <div className="flex gap-3 pt-4">
                   <button
-                    onClick={() => {
-                      onAddToCart(product);
-                      onClose();
-                    }}
-                    className="flex-1 py-3 text-sm font-bold text-[#425a8b] rounded-full border border-[#425a8b] hover:bg-gray-50 transition-colors"
+                    onClick={handleAddToCart}
+                    disabled={isAddingToCart || product.stock === 0}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#425a8b] text-white font-medium rounded-lg hover:bg-[#334a7a] disabled:opacity-50 transition-colors"
                   >
-                    Add to Cart
+                    <ShoppingCart className="h-5 w-5" />
+                    {isAddingToCart ? 'Adding...' : 'Add to Cart'}
                   </button>
+                  
                   <button
-                    onClick={() => {
-                      onBuyNow(product);
-                      onClose();
-                    }}
-                    className="flex-1 py-3 text-sm font-bold text-white bg-[#425a8b] rounded-full border border-[#425a8b] hover:bg-[#334a7a] transition-colors"
+                    onClick={handleBuyNow}
+                    disabled={product.stock === 0}
+                    className="flex-1 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                   >
                     Buy Now
+                  </button>
+                  
+                  <button
+                    onClick={handleToggleWishlist}
+                    className={`p-3 rounded-lg border transition-colors ${
+                      isWishlisted
+                        ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title={isWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  >
+                    <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current' : ''}`} />
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-          
-          {/* Close Button */}
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-600 text-base font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Close
-            </button>
           </div>
         </div>
       </div>

@@ -1,19 +1,24 @@
 import React, { useState } from "react";
-import { X, Mail, Lock, User, Eye, EyeOff, Phone, Facebook, Twitter, Chrome } from "lucide-react";
+import { X, Mail, Lock, User, Eye, EyeOff, Phone, Facebook, Twitter, Chrome, Loader } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
 
 const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    fullName: "",
+    name: "",
     phone: "",
     confirmPassword: "",
     rememberMe: false,
     agreeToTerms: false,
   });
+
+  const { login, register } = useAuth();
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -23,33 +28,56 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (activeTab === "login") {
-      console.log("Login data:", { email: formData.email, password: formData.password });
-      // Add your login logic here
-      alert("Login functionality would be implemented here!");
-    } else {
-      if (formData.password !== formData.confirmPassword) {
-        alert("Passwords don't match!");
-        return;
+    setLoading(true);
+
+    try {
+      if (activeTab === "login") {
+        // Login logic
+        await login(formData.email, formData.password);
+        toast.success("Login successful!");
+        onClose();
+      } else {
+        // Register logic
+        if (formData.password !== formData.confirmPassword) {
+          toast.error("Passwords don't match!");
+          setLoading(false);
+          return;
+        }
+
+        if (!formData.agreeToTerms) {
+          toast.error("Please agree to the terms and conditions");
+          setLoading(false);
+          return;
+        }
+
+        const userData = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone
+        };
+
+        await register(userData);
+        toast.success("Registration successful!");
+        onClose();
       }
-      console.log("Register data:", formData);
-      // Add your registration logic here
-      alert("Registration functionality would be implemented here!");
+    } catch (error) {
+      toast.error(error.message || "An error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSocialLogin = (provider) => {
-    console.log(`Login with ${provider}`);
-    // Add social login logic here
-    alert(`${provider} login would be implemented here!`);
+    toast.success(`${provider} login would be implemented here!`);
+    // Add actual social login logic here
   };
 
   const handleForgotPassword = () => {
-    console.log("Forgot password clicked");
+    toast.success("Forgot password functionality would be implemented here!");
     // Add forgot password logic here
-    alert("Forgot password functionality would be implemented here!");
   };
 
   if (!isOpen) return null;
@@ -125,6 +153,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Enter your email"
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
@@ -137,6 +166,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           type="button"
                           onClick={handleForgotPassword}
                           className="text-sm text-[#425A8B] hover:text-[#334a7a] font-medium"
+                          disabled={loading}
                         >
                           Forgot Password?
                         </button>
@@ -153,11 +183,13 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Enter your password"
                           required
+                          disabled={loading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          disabled={loading}
                         >
                           {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
@@ -173,6 +205,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                         checked={formData.rememberMe}
                         onChange={handleInputChange}
                         className="h-4 w-4 text-[#425A8B] rounded focus:ring-[#425A8B]"
+                        disabled={loading}
                       />
                       <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700">
                         Remember me
@@ -182,9 +215,14 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                     {/* Login Button */}
                     <button
                       type="submit"
-                      className="w-full py-3 bg-[#425A8B] text-white font-semibold rounded-lg hover:bg-[#334a7a] transition-colors shadow-md hover:shadow-lg"
+                      disabled={loading}
+                      className="w-full py-3 bg-[#425A8B] text-white font-semibold rounded-lg hover:bg-[#334a7a] transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      Sign In
+                      {loading ? (
+                        <Loader className="animate-spin h-5 w-5" />
+                      ) : (
+                        'Sign In'
+                      )}
                     </button>
 
                     {/* Divider */}
@@ -202,21 +240,24 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Google")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Chrome size={20} className="text-red-500" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Facebook")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Facebook size={20} className="text-blue-600" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Twitter")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Twitter size={20} className="text-blue-400" />
                       </button>
@@ -228,7 +269,8 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                       <button
                         type="button"
                         onClick={() => setActiveTab("register")}
-                        className="text-[#425A8B] hover:text-[#334a7a] font-semibold"
+                        className="text-[#425A8B] hover:text-[#334a7a] font-semibold disabled:opacity-50"
+                        disabled={loading}
                       >
                         Sign up here
                       </button>
@@ -251,12 +293,13 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                         </div>
                         <input
                           type="text"
-                          name="fullName"
-                          value={formData.fullName}
+                          name="name"
+                          value={formData.name}
                           onChange={handleInputChange}
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Enter your full name"
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
@@ -276,6 +319,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Enter your email"
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
@@ -295,6 +339,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Enter your phone number"
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
@@ -314,11 +359,13 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Create a password"
                           required
+                          disabled={loading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          disabled={loading}
                         >
                           {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
@@ -340,11 +387,13 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                           className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#425A8B] focus:border-transparent"
                           placeholder="Confirm your password"
                           required
+                          disabled={loading}
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          disabled={loading}
                         >
                           {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                         </button>
@@ -361,12 +410,14 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                         onChange={handleInputChange}
                         className="h-4 w-4 mt-1 text-[#425A8B] rounded focus:ring-[#425A8B]"
                         required
+                        disabled={loading}
                       />
                       <label htmlFor="agreeToTerms" className="ml-2 text-sm text-gray-700">
                         I agree to the{" "}
                         <button
                           type="button"
                           className="text-[#425A8B] hover:text-[#334a7a] font-medium"
+                          disabled={loading}
                         >
                           Terms of Service
                         </button>{" "}
@@ -374,6 +425,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                         <button
                           type="button"
                           className="text-[#425A8B] hover:text-[#334a7a] font-medium"
+                          disabled={loading}
                         >
                           Privacy Policy
                         </button>
@@ -383,9 +435,14 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                     {/* Register Button */}
                     <button
                       type="submit"
-                      className="w-full py-3 bg-[#425A8B] text-white font-semibold rounded-lg hover:bg-[#334a7a] transition-colors shadow-md hover:shadow-lg"
+                      disabled={loading}
+                      className="w-full py-3 bg-[#425A8B] text-white font-semibold rounded-lg hover:bg-[#334a7a] transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      Create Account
+                      {loading ? (
+                        <Loader className="animate-spin h-5 w-5" />
+                      ) : (
+                        'Create Account'
+                      )}
                     </button>
 
                     {/* Divider */}
@@ -403,21 +460,24 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Google")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Chrome size={20} className="text-red-500" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Facebook")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Facebook size={20} className="text-blue-600" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("Twitter")}
-                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center justify-center py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={loading}
                       >
                         <Twitter size={20} className="text-blue-400" />
                       </button>
@@ -429,7 +489,8 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
                       <button
                         type="button"
                         onClick={() => setActiveTab("login")}
-                        className="text-[#425A8B] hover:text-[#334a7a] font-semibold"
+                        className="text-[#425A8B] hover:text-[#334a7a] font-semibold disabled:opacity-50"
+                        disabled={loading}
                       >
                         Sign in here
                       </button>
