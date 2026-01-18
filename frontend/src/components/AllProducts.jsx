@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ProductCard from './ProductCard';
 import ProductModal from './Modal';
 import { useProducts } from '../context/ProductsContext';
@@ -18,6 +18,11 @@ const AllProducts = () => {
   const [limit, setLimit] = useState(8);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Use refs to track initial mount
+  const isInitialMount = useRef(true);
+  const prevTabRef = useRef('all');
+  const prevSortByRef = useRef('sales');
+
   const { cart, addToCart } = useCart();
   const { wishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   
@@ -35,44 +40,22 @@ const AllProducts = () => {
     categories
   } = useProducts();
 
-  // Debug: Log state changes
+  // Debug: Log state changes - FIXED: Remove product[0] reference that could cause re-renders
   useEffect(() => {
     console.log('🔍 [AllProducts] Products updated:', {
       count: products.length,
-      firstProduct: products[0],
       loading: loading.products,
       error
     });
-  }, [products, loading.products, error]);
+  }, [products.length, loading.products, error]);
 
-  useEffect(() => {
-    console.log('🔍 [AllProducts] Featured products:', {
-      count: featuredProducts.length,
-      firstProduct: featuredProducts[0]
-    });
-  }, [featuredProducts]);
-
-  useEffect(() => {
-    console.log('🔍 [AllProducts] Best sellers:', {
-      count: bestSellers.length,
-      firstProduct: bestSellers[0]
-    });
-  }, [bestSellers]);
-
-  useEffect(() => {
-    console.log('🔍 [AllProducts] New arrivals:', {
-      count: newArrivals.length,
-      firstProduct: newArrivals[0]
-    });
-  }, [newArrivals]);
-
-  // Initial fetch
+  // Initial fetch - FIXED: Only run once on mount
   useEffect(() => {
     console.log('🚀 [AllProducts] Initial mount - fetching products');
     
     const initFetch = async () => {
       try {
-        await fetchProducts({ page, limit, sortBy });
+        await fetchProducts({ page: 1, limit, sortBy });
         // Also fetch other data
         await Promise.all([
           fetchFeaturedProducts(),
@@ -84,10 +67,13 @@ const AllProducts = () => {
       }
     };
     
-    initFetch();
-  }, []);
+    if (isInitialMount.current) {
+      initFetch();
+      isInitialMount.current = false;
+    }
+  }, []); // Empty dependency array - run only once
 
-  // Fetch products when tab or sort changes
+  // Fetch products when tab or sort changes - FIXED: Prevent infinite loops
   const fetchTabData = useCallback(async () => {
     console.log('🔄 [AllProducts] Fetching for tab:', activeTab);
     
@@ -127,14 +113,34 @@ const AllProducts = () => {
   }, [activeTab, page, limit, sortBy, searchTerm, categoryFilter, priceRange, 
       fetchProducts, fetchBestSellers, fetchNewArrivals, fetchFeaturedProducts]);
 
+  // FIXED: Only fetch when tab or sortBy actually changes
   useEffect(() => {
-    fetchTabData();
-  }, [activeTab, page, sortBy, fetchTabData]);
+    if (isInitialMount.current) return; // Skip on initial mount
+    
+    // Check if tab or sortBy actually changed
+    const tabChanged = prevTabRef.current !== activeTab;
+    const sortChanged = prevSortByRef.current !== sortBy;
+    
+    if (tabChanged || sortChanged || page !== 1) {
+      console.log('📡 [AllProducts] Tab/sort/page changed, fetching data');
+      fetchTabData();
+      
+      // Update refs
+      prevTabRef.current = activeTab;
+      prevSortByRef.current = sortBy;
+    }
+  }, [activeTab, sortBy, page, fetchTabData]);
 
-  // Debounced filter changes
+  // Debounced filter changes - FIXED: Use ref to track timeout
+  const filterTimeoutRef = useRef(null);
   useEffect(() => {
-    if (activeTab === 'all') {
-      const timer = setTimeout(() => {
+    if (activeTab === 'all' && !isInitialMount.current) {
+      // Clear previous timeout
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+      
+      filterTimeoutRef.current = setTimeout(() => {
         console.log('🔍 [AllProducts] Applying filters:', { searchTerm, categoryFilter, priceRange });
         fetchProducts({ 
           page: 1,
@@ -148,12 +154,16 @@ const AllProducts = () => {
         setPage(1);
       }, 500);
 
-      return () => clearTimeout(timer);
+      return () => {
+        if (filterTimeoutRef.current) {
+          clearTimeout(filterTimeoutRef.current);
+        }
+      };
     }
   }, [searchTerm, categoryFilter, priceRange, activeTab, limit, sortBy, fetchProducts]);
 
-  // Get products to display with fallback
-  const getDisplayProducts = useCallback(() => {
+  // Get products to display - FIXED: Memoize properly
+  const displayProducts = useCallback(() => {
     let productsToShow = [];
     
     switch (activeTab) {
@@ -173,90 +183,10 @@ const AllProducts = () => {
         break;
     }
     
-    // If no products, show sample data for debugging
-    if (productsToShow.length === 0 && !loading.products) {
-      console.log('⚠️ [AllProducts] No products found, showing sample data');
-      productsToShow = getSampleProducts();
-    }
-    
     return productsToShow;
-  }, [activeTab, bestSellers, newArrivals, featuredProducts, products, loading.products]);
+  }, [activeTab, bestSellers, newArrivals, featuredProducts, products]);
 
-  const displayProducts = getDisplayProducts();
-
-  // Sample products for debugging
-  const getSampleProducts = () => {
-    return [
-      {
-        _id: 'sample-1',
-        name: 'HALAL TURKEY (AROUND 12-13 LB)',
-        price: 28.07,
-        originalPrice: 35.60,
-        discount: 21,
-        stock: 50,
-        rating: 4.5,
-        numReviews: 65,
-        images: [{ url: 'https://images.unsplash.com/photo-1587590227264-0ac64ce63ce8?w=600&h=600&fit=crop' }],
-        category: { name: 'Meat' },
-        timer: 86400,
-        sales: 450,
-        views: 1200,
-        description: 'Premium halal turkey',
-        specifications: [
-          { label: 'Weight', value: '12-13 LB' },
-          { label: 'Type', value: 'Halal Certified' }
-        ]
-      },
-      {
-        _id: 'sample-2',
-        name: 'Fresh Apples (1kg)',
-        price: 4.99,
-        originalPrice: 6.99,
-        discount: 29,
-        stock: 150,
-        rating: 4.7,
-        numReviews: 95,
-        images: [{ url: 'https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=600&h=600&fit=crop' }],
-        category: { name: 'Fruit' },
-        timer: 7200,
-        sales: 780,
-        views: 2100,
-        description: 'Fresh organic apples'
-      },
-      {
-        _id: 'sample-3',
-        name: 'Big Potatoes 1 Kg',
-        price: 10.99,
-        originalPrice: 35.60,
-        discount: 69,
-        stock: 200,
-        rating: 4.8,
-        numReviews: 120,
-        images: [{ url: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&h=600&fit=crop' }],
-        category: { name: 'Vegetable' },
-        timer: 3600,
-        sales: 890,
-        views: 2500,
-        description: 'Fresh organic potatoes'
-      },
-      {
-        _id: 'sample-4',
-        name: 'Fresh Chicken Breast 500g',
-        price: 8.99,
-        originalPrice: 12.99,
-        discount: 31,
-        stock: 100,
-        rating: 4.3,
-        numReviews: 75,
-        images: [{ url: 'https://images.unsplash.com/photo-1589987607627-8cfae2d0ebd4?w=600&h=600&fit=crop' }],
-        category: { name: 'Meat' },
-        timer: 1800,
-        sales: 670,
-        views: 1800,
-        description: 'Boneless chicken breast'
-      }
-    ];
-  };
+  const currentDisplayProducts = displayProducts();
 
   const handleAddToCart = async (product) => {
     try {
@@ -316,6 +246,16 @@ const AllProducts = () => {
     setSortBy('sales');
     setPage(1);
   };
+
+  // FIXED: Also check the ProductsContext for potential infinite loops
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <section className="bg-white py-8 md:py-12 lg:py-16">
@@ -489,7 +429,7 @@ const AllProducts = () => {
                 <span>Loading products...</span>
               ) : (
                 <>
-                  Showing <span className="font-bold text-[#425a8b]">{displayProducts.length}</span> products
+                  Showing <span className="font-bold text-[#425a8b]">{currentDisplayProducts.length}</span> products
                   {searchTerm && (
                     <span className="ml-2 text-sm">
                       for "<span className="font-medium">{searchTerm}</span>"
@@ -508,13 +448,13 @@ const AllProducts = () => {
         </div>
 
         {/* Products Grid */}
-        {loading.products && displayProducts.length === 0 ? (
+        {loading.products && currentDisplayProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader className="animate-spin h-12 w-12 text-[#425a8b] mb-4" />
             <p className="text-gray-600">Loading products...</p>
             <p className="text-sm text-gray-400 mt-2">Fetching from API...</p>
           </div>
-        ) : displayProducts.length === 0 ? (
+        ) : currentDisplayProducts.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-lg">
             <div className="max-w-md mx-auto">
               <div className="text-gray-400 mb-4">
@@ -533,55 +473,20 @@ const AllProducts = () => {
                 >
                   Clear Filters
                 </button>
-                <p className="text-sm text-gray-500">
-                  Showing sample products for demonstration
-                </p>
+                <button
+                  onClick={() => fetchTabData()}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Retry Loading
+                </button>
               </div>
             </div>
           </div>
         ) : (
           <>
-            {/* Debug warning if showing sample data */}
-            {displayProducts[0]?._id?.includes('sample') && (
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <div className="h-5 w-5 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <span className="text-xs">!</span>
-                    </div>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">
-                      Showing Sample Data
-                    </h3>
-                    <div className="mt-2 text-sm text-yellow-700">
-                      <p>
-                        The API returned no products. These are sample products for demonstration.
-                        Check if your backend is running correctly.
-                      </p>
-                      <div className="mt-2 space-x-2">
-                        <button
-                          onClick={() => window.open('http://localhost:5000/api/products', '_blank')}
-                          className="text-sm underline hover:text-yellow-900"
-                        >
-                          Test API Endpoint
-                        </button>
-                        <button
-                          onClick={() => fetchTabData()}
-                          className="text-sm underline hover:text-yellow-900"
-                        >
-                          Retry Fetch
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Products Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-              {displayProducts.map((product, index) => (
+              {currentDisplayProducts.map((product, index) => (
                 <ProductCard
                   key={product._id || `product-${index}`}
                   product={product}

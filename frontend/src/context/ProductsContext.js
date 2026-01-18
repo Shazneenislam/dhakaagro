@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+// contexts/productsContext.js
+import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { productAPI, categoryAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -35,144 +36,177 @@ export const ProductsProvider = ({ children }) => {
     totalPages: 0
   });
 
+  // Track render count to detect infinite loops
+  const renderCount = useRef(0);
+  const isInitialMount = useRef(true);
+
   // Debug: Track state changes
   useEffect(() => {
-    console.log('🔄 [ProductsContext] Context initialized with state:', {
+    renderCount.current += 1;
+    console.log(`🔄 [ProductsContext] Render #${renderCount.current}`, {
       productsCount: products.length,
       featuredProductsCount: featuredProducts.length,
       bestSellersCount: bestSellers.length,
       newArrivalsCount: newArrivals.length,
+      categoriesCount: categories.length,
       loading,
       error
     });
-  }, []);
-
-  useEffect(() => {
-    console.log('📊 [ProductsContext] State updated:', {
-      productsCount: products.length,
-      loading,
-      error
-    });
-  }, [products, loading, error]);
+    
+    // Warn if too many renders
+    if (renderCount.current > 20) {
+      console.warn('⚠️ [ProductsContext] Excessive re-renders detected!');
+    }
+  });
 
   // Set loading state for specific type
   const setLoadingState = useCallback((type, isLoading) => {
-    console.log(`⏳ [ProductsContext] Loading state changed: ${type} = ${isLoading}`);
+    console.log(`⏳ [ProductsContext] Loading state: ${type} = ${isLoading}`);
     setLoading(prev => ({ ...prev, [type]: isLoading }));
   }, []);
 
-  // Fetch all products with filters
+  // ✅ FIXED: fetchProducts with proper dependency handling
   const fetchProducts = useCallback(async (params = {}) => {
     setLoadingState('products', true);
     setError(null);
     
     try {
-      console.log('📡 [ProductsContext] Fetching products with params:', {
-        ...params,
-        page: pagination.page,
-        limit: pagination.limit
-      });
+      console.log('📡 [ProductsContext] Fetching products with params:', params);
       
       const response = await productAPI.getProducts({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: params.page || pagination.page,
+        limit: params.limit || pagination.limit,
+        sortBy: params.sortBy || 'createdAt',
         ...params
       });
       
-      console.log('✅ [ProductsContext] API Response:', {
+      console.log('✅ [ProductsContext] API Response received:', {
         hasResponse: !!response,
         responseType: typeof response,
-        isArray: Array.isArray(response),
-        responseKeys: response ? Object.keys(response) : 'no response',
-        productsCount: response?.products?.length || (Array.isArray(response) ? response.length : 0),
-        response
+        isArray: Array.isArray(response)
       });
       
-      // Handle different response formats
       let productsList = [];
+      let newPagination = { ...pagination };
+      
+      // Handle different response formats
       if (response) {
         if (response.products && Array.isArray(response.products)) {
           productsList = response.products;
-          console.log('📦 Got products array from response.products');
+          console.log(`📦 Got ${productsList.length} products from response.products`);
         } else if (Array.isArray(response)) {
           productsList = response;
-          console.log('📦 Got products array directly from response');
+          console.log(`📦 Got ${productsList.length} products directly from response`);
+        } else if (response.data && Array.isArray(response.data)) {
+          productsList = response.data;
+          console.log(`📦 Got ${productsList.length} products from response.data`);
         } else {
-          console.log('⚠️ Unexpected response format:', response);
+          console.warn('⚠️ Unexpected response format:', response);
           productsList = [];
+        }
+        
+        // Update pagination if available
+        if (response.total !== undefined) {
+          newPagination = {
+            page: response.currentPage || (params.page || pagination.page),
+            limit: response.limit || (params.limit || pagination.limit),
+            total: response.total,
+            totalPages: response.totalPages || Math.ceil(response.total / (params.limit || pagination.limit))
+          };
         }
       }
       
-      setProducts(productsList);
+      // Only update state if data actually changed to prevent unnecessary re-renders
+      setProducts(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(productsList)) {
+          return prev;
+        }
+        return productsList;
+      });
       
-      // Update pagination if response includes pagination data
-      if (response && response.total !== undefined) {
-        setPagination(prev => ({
-          ...prev,
-          page: response.currentPage || prev.page,
-          total: response.total,
-          totalPages: response.totalPages || Math.ceil(response.total / prev.limit)
-        }));
-      }
+      setPagination(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newPagination)) {
+          return prev;
+        }
+        return newPagination;
+      });
       
-      return response;
+      return { products: productsList, pagination: newPagination };
+      
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch products';
       console.error('❌ [ProductsContext] Error fetching products:', {
         message: err.message,
-        stack: err.stack,
+        status: err.response?.status,
+        data: err.response?.data,
         fullError: err
       });
+      
       setError(errorMessage);
-      toast.error(errorMessage);
+      setProducts([]);
+      
+      const userMessage = err.response?.data?.message || errorMessage;
+      toast.error(`Failed to load products: ${userMessage}`);
+      
       throw err;
     } finally {
       setLoadingState('products', false);
     }
-  }, [setLoadingState, pagination.page, pagination.limit]);
+  }, [setLoadingState, pagination]); // Only depend on setLoadingState and pagination
 
-  // Fetch single product by ID
+  // ✅ FIXED: fetchProduct
   const fetchProduct = useCallback(async (id) => {
+    if (!id) {
+      toast.error('Product ID is required');
+      throw new Error('Product ID is required');
+    }
+    
     setLoadingState('singleProduct', true);
     setError(null);
     
     try {
       console.log('📡 [ProductsContext] Fetching product by ID:', id);
       const product = await productAPI.getProduct(id);
-      console.log('✅ [ProductsContext] Product response:', product);
+      console.log('✅ [ProductsContext] Product fetched:', { id, name: product.name });
       return product;
     } catch (err) {
-      const errorMessage = err.message || 'Failed to fetch product details';
-      console.error('❌ [ProductsContext] Error fetching product:', err);
+      const errorMessage = err.message || `Failed to fetch product (ID: ${id})`;
+      console.error('Error fetching product:', err);
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(`Failed to load product: ${err.response?.data?.message || errorMessage}`);
       throw err;
     } finally {
       setLoadingState('singleProduct', false);
     }
   }, [setLoadingState]);
 
-  // Fetch product by slug
+  // ✅ FIXED: fetchProductBySlug
   const fetchProductBySlug = useCallback(async (slug) => {
+    if (!slug) {
+      toast.error('Product slug is required');
+      throw new Error('Product slug is required');
+    }
+    
     setLoadingState('singleProduct', true);
     setError(null);
     
     try {
       console.log('📡 [ProductsContext] Fetching product by slug:', slug);
       const product = await productAPI.getProductBySlug(slug);
-      console.log('✅ [ProductsContext] Product by slug response:', product);
+      console.log('✅ [ProductsContext] Product by slug fetched:', { slug, name: product.name });
       return product;
     } catch (err) {
-      const errorMessage = err.message || 'Failed to fetch product';
-      console.error('❌ [ProductsContext] Error fetching product by slug:', err);
+      const errorMessage = err.message || `Failed to fetch product (slug: ${slug})`;
+      console.error('Error fetching product by slug:', err);
       setError(errorMessage);
+      toast.error(`Failed to load product: ${err.response?.data?.message || errorMessage}`);
       throw err;
     } finally {
       setLoadingState('singleProduct', false);
     }
   }, [setLoadingState]);
 
-  // Fetch featured products
+  // ✅ FIXED: fetchFeaturedProducts
   const fetchFeaturedProducts = useCallback(async () => {
     setLoadingState('featured', true);
     setError(null);
@@ -180,25 +214,42 @@ export const ProductsProvider = ({ children }) => {
     try {
       console.log('📡 [ProductsContext] Fetching featured products');
       const featured = await productAPI.getFeaturedProducts();
-      console.log('✅ [ProductsContext] Featured products response:', {
-        hasData: !!featured,
-        isArray: Array.isArray(featured),
-        count: featured?.length || 0
+      
+      let featuredList = [];
+      if (featured) {
+        if (Array.isArray(featured)) {
+          featuredList = featured;
+        } else if (featured.products && Array.isArray(featured.products)) {
+          featuredList = featured.products;
+        } else if (featured.data && Array.isArray(featured.data)) {
+          featuredList = featured.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] Featured products:', featuredList.length);
+      
+      // Only update if changed
+      setFeaturedProducts(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(featuredList)) {
+          return prev;
+        }
+        return featuredList;
       });
-      setFeaturedProducts(featured || []);
-      return featured || [];
+      
+      return featuredList;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch featured products';
       console.error('❌ [ProductsContext] Error fetching featured products:', err);
       setError(errorMessage);
-      setFeaturedProducts([]); // Clear any previous data
-      throw err;
+      setFeaturedProducts([]);
+      toast.error('Failed to load featured products');
+      return [];
     } finally {
       setLoadingState('featured', false);
     }
   }, [setLoadingState]);
 
-  // Fetch best sellers
+  // ✅ FIXED: fetchBestSellers
   const fetchBestSellers = useCallback(async () => {
     setLoadingState('featured', true);
     setError(null);
@@ -206,25 +257,41 @@ export const ProductsProvider = ({ children }) => {
     try {
       console.log('📡 [ProductsContext] Fetching best sellers');
       const best = await productAPI.getBestSellers();
-      console.log('✅ [ProductsContext] Best sellers response:', {
-        hasData: !!best,
-        isArray: Array.isArray(best),
-        count: best?.length || 0
+      
+      let bestSellersList = [];
+      if (best) {
+        if (Array.isArray(best)) {
+          bestSellersList = best;
+        } else if (best.products && Array.isArray(best.products)) {
+          bestSellersList = best.products;
+        } else if (best.data && Array.isArray(best.data)) {
+          bestSellersList = best.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] Best sellers:', bestSellersList.length);
+      
+      setBestSellers(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(bestSellersList)) {
+          return prev;
+        }
+        return bestSellersList;
       });
-      setBestSellers(best || []);
-      return best || [];
+      
+      return bestSellersList;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch best sellers';
       console.error('❌ [ProductsContext] Error fetching best sellers:', err);
       setError(errorMessage);
-      setBestSellers([]); // Clear any previous data
-      throw err;
+      setBestSellers([]);
+      toast.error('Failed to load best sellers');
+      return [];
     } finally {
       setLoadingState('featured', false);
     }
   }, [setLoadingState]);
 
-  // Fetch new arrivals
+  // ✅ FIXED: fetchNewArrivals
   const fetchNewArrivals = useCallback(async () => {
     setLoadingState('featured', true);
     setError(null);
@@ -232,33 +299,63 @@ export const ProductsProvider = ({ children }) => {
     try {
       console.log('📡 [ProductsContext] Fetching new arrivals');
       const newArr = await productAPI.getNewArrivals();
-      console.log('✅ [ProductsContext] New arrivals response:', {
-        hasData: !!newArr,
-        isArray: Array.isArray(newArr),
-        count: newArr?.length || 0
+      
+      let newArrivalsList = [];
+      if (newArr) {
+        if (Array.isArray(newArr)) {
+          newArrivalsList = newArr;
+        } else if (newArr.products && Array.isArray(newArr.products)) {
+          newArrivalsList = newArr.products;
+        } else if (newArr.data && Array.isArray(newArr.data)) {
+          newArrivalsList = newArr.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] New arrivals:', newArrivalsList.length);
+      
+      setNewArrivals(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(newArrivalsList)) {
+          return prev;
+        }
+        return newArrivalsList;
       });
-      setNewArrivals(newArr || []);
-      return newArr || [];
+      
+      return newArrivalsList;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch new arrivals';
       console.error('❌ [ProductsContext] Error fetching new arrivals:', err);
       setError(errorMessage);
-      setNewArrivals([]); // Clear any previous data
-      throw err;
+      setNewArrivals([]);
+      toast.error('Failed to load new arrivals');
+      return [];
     } finally {
       setLoadingState('featured', false);
     }
   }, [setLoadingState]);
 
-  // Fetch related products
+  // ✅ FIXED: fetchRelatedProducts
   const fetchRelatedProducts = useCallback(async (productId) => {
+    if (!productId) return [];
+    
     setLoadingState('products', true);
     
     try {
       console.log('📡 [ProductsContext] Fetching related products for:', productId);
       const related = await productAPI.getRelatedProducts(productId);
-      console.log('✅ [ProductsContext] Related products response:', related?.length || 0);
-      return related || [];
+      
+      let relatedList = [];
+      if (related) {
+        if (Array.isArray(related)) {
+          relatedList = related;
+        } else if (related.products) {
+          relatedList = related.products;
+        } else if (related.data) {
+          relatedList = related.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] Related products:', relatedList.length);
+      return relatedList;
     } catch (err) {
       console.warn('❌ [ProductsContext] Error fetching related products:', err.message);
       return [];
@@ -267,20 +364,31 @@ export const ProductsProvider = ({ children }) => {
     }
   }, [setLoadingState]);
 
-  // Create product review
+  // ✅ FIXED: createReview
   const createReview = useCallback(async (productId, reviewData) => {
+    if (!productId || !reviewData) {
+      toast.error('Product ID and review data are required');
+      throw new Error('Missing required parameters');
+    }
+    
     try {
       console.log('📝 [ProductsContext] Creating review for product:', productId);
-      await productAPI.createReview(productId, reviewData);
+      const result = await productAPI.createReview(productId, reviewData);
       toast.success('Review submitted successfully');
-      return true;
+      
+      // Refresh the product to get updated reviews
+      await fetchProduct(productId);
+      
+      return result;
     } catch (err) {
-      toast.error(err.message || 'Failed to submit review');
+      const errorMessage = err.message || 'Failed to submit review';
+      console.error('❌ [ProductsContext] Error creating review:', err);
+      toast.error(errorMessage);
       throw err;
     }
-  }, []);
+  }, [fetchProduct]);
 
-  // Fetch all categories
+  // ✅ FIXED: fetchCategories
   const fetchCategories = useCallback(async () => {
     setLoadingState('categories', true);
     setError(null);
@@ -288,76 +396,131 @@ export const ProductsProvider = ({ children }) => {
     try {
       console.log('📡 [ProductsContext] Fetching categories');
       const cats = await categoryAPI.getCategories();
-      console.log('✅ [ProductsContext] Categories response:', {
-        hasData: !!cats,
-        isArray: Array.isArray(cats),
-        count: cats?.length || 0
+      
+      let categoriesList = [];
+      if (cats) {
+        if (Array.isArray(cats)) {
+          categoriesList = cats;
+        } else if (cats.data && Array.isArray(cats.data)) {
+          categoriesList = cats.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] Categories:', categoriesList.length);
+      
+      setCategories(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(categoriesList)) {
+          return prev;
+        }
+        return categoriesList;
       });
-      setCategories(cats || []);
-      return cats || [];
+      
+      return categoriesList;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch categories';
       console.error('❌ [ProductsContext] Error fetching categories:', err);
       setError(errorMessage);
-      setCategories([]); // Clear any previous data
-      throw err;
-    } finally {
-      setLoadingState('categories', false);
-    }
-  }, [setLoadingState]);
-
-  // Fetch featured categories
-  const fetchFeaturedCategories = useCallback(async () => {
-    setLoadingState('categories', true);
-    
-    try {
-      console.log('📡 [ProductsContext] Fetching featured categories');
-      const featuredCats = await categoryAPI.getFeaturedCategories();
-      console.log('✅ [ProductsContext] Featured categories response:', {
-        hasData: !!featuredCats,
-        isArray: Array.isArray(featuredCats),
-        count: featuredCats?.length || 0
-      });
-      setFeaturedCategories(featuredCats || []);
-      return featuredCats || [];
-    } catch (err) {
-      console.warn('❌ [ProductsContext] Error fetching featured categories:', err.message);
-      setFeaturedCategories([]); // Clear any previous data
+      setCategories([]);
+      toast.error('Failed to load categories');
       return [];
     } finally {
       setLoadingState('categories', false);
     }
   }, [setLoadingState]);
 
-  // Search products
+  // ✅ FIXED: fetchFeaturedCategories
+  const fetchFeaturedCategories = useCallback(async () => {
+    setLoadingState('categories', true);
+    
+    try {
+      console.log('📡 [ProductsContext] Fetching featured categories');
+      const featuredCats = await categoryAPI.getFeaturedCategories();
+      
+      let featuredCatsList = [];
+      if (featuredCats) {
+        if (Array.isArray(featuredCats)) {
+          featuredCatsList = featuredCats;
+        } else if (featuredCats.data && Array.isArray(featuredCats.data)) {
+          featuredCatsList = featuredCats.data;
+        }
+      }
+      
+      console.log('✅ [ProductsContext] Featured categories:', featuredCatsList.length);
+      
+      setFeaturedCategories(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(featuredCatsList)) {
+          return prev;
+        }
+        return featuredCatsList;
+      });
+      
+      return featuredCatsList;
+    } catch (err) {
+      console.warn('❌ [ProductsContext] Error fetching featured categories:', err.message);
+      setFeaturedCategories([]);
+      return [];
+    } finally {
+      setLoadingState('categories', false);
+    }
+  }, [setLoadingState]);
+
+  // ✅ FIXED: searchProducts
   const searchProducts = useCallback(async (query, params = {}) => {
+    if (!query || query.trim() === '') {
+      setSearchResults([]);
+      return [];
+    }
+    
     setLoadingState('search', true);
     setError(null);
     
     try {
-      console.log('🔍 [ProductsContext] Searching products with query:', query);
+      console.log('🔍 [ProductsContext] Searching products:', { query, params });
       const response = await productAPI.getProducts({
         search: query,
         ...params
       });
       
-      const results = response.products || response || [];
+      let results = [];
+      if (response) {
+        if (response.products && Array.isArray(response.products)) {
+          results = response.products;
+        } else if (Array.isArray(response)) {
+          results = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          results = response.data;
+        }
+      }
+      
       console.log('✅ [ProductsContext] Search results:', results.length);
-      setSearchResults(results);
+      
+      setSearchResults(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(results)) {
+          return prev;
+        }
+        return results;
+      });
+      
       return results;
     } catch (err) {
       const errorMessage = err.message || 'Search failed';
       console.error('❌ [ProductsContext] Error searching products:', err);
       setError(errorMessage);
-      setSearchResults([]); // Clear any previous results
-      throw err;
+      setSearchResults([]);
+      toast.error('Search failed');
+      return [];
     } finally {
       setLoadingState('search', false);
     }
   }, [setLoadingState]);
 
-  // Get products by category
+  // ✅ FIXED: getProductsByCategory
   const getProductsByCategory = useCallback(async (categoryId, params = {}) => {
+    if (!categoryId) {
+      toast.error('Category ID is required');
+      return [];
+    }
+    
     setLoadingState('products', true);
     setError(null);
     
@@ -368,26 +531,43 @@ export const ProductsProvider = ({ children }) => {
         ...params
       });
       
-      const categoryProducts = response.products || response || [];
+      let categoryProducts = [];
+      if (response) {
+        if (response.products && Array.isArray(response.products)) {
+          categoryProducts = response.products;
+        } else if (Array.isArray(response)) {
+          categoryProducts = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          categoryProducts = response.data;
+        }
+      }
+      
       console.log('✅ [ProductsContext] Category products:', categoryProducts.length);
       return categoryProducts;
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch category products';
       console.error('❌ [ProductsContext] Error fetching category products:', err);
       setError(errorMessage);
-      throw err;
+      toast.error('Failed to load category products');
+      return [];
     } finally {
       setLoadingState('products', false);
     }
   }, [setLoadingState]);
 
-  // Get products by category slug
+  // ✅ FIXED: getProductsByCategorySlug
   const getProductsByCategorySlug = useCallback(async (slug, params = {}) => {
+    if (!slug) {
+      toast.error('Category slug is required');
+      throw new Error('Category slug is required');
+    }
+    
     setLoadingState('products', true);
     setError(null);
     
     try {
       console.log('📡 [ProductsContext] Fetching products by category slug:', slug);
+      
       // First get category by slug
       const category = await categoryAPI.getCategoryBySlug(slug);
       
@@ -401,11 +581,22 @@ export const ProductsProvider = ({ children }) => {
         ...params
       });
       
-      const categoryProducts = response.products || response || [];
+      let categoryProducts = [];
+      if (response) {
+        if (response.products && Array.isArray(response.products)) {
+          categoryProducts = response.products;
+        } else if (Array.isArray(response)) {
+          categoryProducts = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          categoryProducts = response.data;
+        }
+      }
+      
       console.log('✅ [ProductsContext] Category slug products:', {
         categoryName: category.name,
         productsCount: categoryProducts.length
       });
+      
       return {
         category,
         products: categoryProducts
@@ -418,36 +609,40 @@ export const ProductsProvider = ({ children }) => {
     } finally {
       setLoadingState('products', false);
     }
-  }, []);
+  }, [setLoadingState]);
 
-  // Update pagination
+  // ✅ FIXED: updatePagination
   const updatePagination = useCallback((updates) => {
     console.log('📄 [ProductsContext] Updating pagination:', updates);
-    setPagination(prev => ({
-      ...prev,
-      ...updates
-    }));
+    setPagination(prev => {
+      const newPagination = { ...prev, ...updates };
+      if (JSON.stringify(prev) === JSON.stringify(newPagination)) {
+        return prev;
+      }
+      return newPagination;
+    });
   }, []);
 
-  // Clear search results
+  // ✅ FIXED: clearSearchResults
   const clearSearchResults = useCallback(() => {
     console.log('🧹 [ProductsContext] Clearing search results');
     setSearchResults([]);
     setError(null);
   }, []);
 
-  // Clear all errors
+  // ✅ FIXED: clearError
   const clearError = useCallback(() => {
     console.log('🧹 [ProductsContext] Clearing error');
     setError(null);
   }, []);
 
-  // Refresh all data
+  // ✅ FIXED: refreshAllData - with debounce to prevent multiple calls
   const refreshAllData = useCallback(async () => {
     console.log('🔄 [ProductsContext] Refreshing all data');
     try {
+      // Use Promise.all to fetch all data in parallel
       await Promise.all([
-        fetchProducts(),
+        fetchProducts({ page: 1, limit: 10 }),
         fetchFeaturedProducts(),
         fetchBestSellers(),
         fetchNewArrivals(),
@@ -457,8 +652,53 @@ export const ProductsProvider = ({ children }) => {
       toast.success('Data refreshed successfully');
     } catch (err) {
       console.error('❌ [ProductsContext] Error refreshing data:', err);
+      toast.error('Failed to refresh data');
     }
   }, [fetchProducts, fetchFeaturedProducts, fetchBestSellers, fetchNewArrivals, fetchCategories, fetchFeaturedCategories]);
+
+  // ✅ FIXED: Initial data fetch - ONLY ON MOUNT
+  useEffect(() => {
+    if (isInitialMount.current) {
+      console.log('🚀 [ProductsContext] Initial mount - fetching initial data');
+      
+      const initializeData = async () => {
+        try {
+          // Fetch initial data in parallel
+          await Promise.all([
+            fetchProducts({ page: 1, limit: 8, sortBy: 'sales' }),
+            fetchCategories()
+          ]);
+          
+          // Fetch additional data sequentially to avoid overwhelming the API
+          await fetchFeaturedProducts();
+          await fetchBestSellers();
+          await fetchNewArrivals();
+          await fetchFeaturedCategories();
+          
+          console.log('✅ [ProductsContext] Initial data fetch complete');
+        } catch (err) {
+          console.error('❌ [ProductsContext] Failed to initialize data:', err);
+          toast.error('Failed to load initial data');
+        }
+      };
+      
+      initializeData();
+      isInitialMount.current = false;
+    }
+  }, []); // Empty dependency array - ONLY run once on mount
+
+  // Helper functions (client-side filtering if needed)
+  const getProductById = useCallback((id) => {
+    return products.find(p => p._id === id);
+  }, [products]);
+
+  const getProductsByCategoryId = useCallback((categoryId) => {
+    return products.filter(p => p.category?._id === categoryId);
+  }, [products]);
+
+  const getProductsByCategorySlugClient = useCallback((slug) => {
+    return products.filter(p => p.category?.slug === slug);
+  }, [products]);
 
   const value = {
     // State
@@ -496,10 +736,10 @@ export const ProductsProvider = ({ children }) => {
     clearError,
     refreshAllData,
     
-    // Helper functions (client-side filtering if needed)
-    getProductById: (id) => products.find(p => p._id === id),
-    getProductsByCategoryId: (categoryId) => products.filter(p => p.category?._id === categoryId),
-    getProductsByCategorySlugClient: (slug) => products.filter(p => p.category?.slug === slug),
+    // Helper functions
+    getProductById,
+    getProductsByCategoryId,
+    getProductsByCategorySlugClient,
     
     // Loading states for specific operations
     isLoading: loading.products,

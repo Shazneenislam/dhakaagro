@@ -1,8 +1,9 @@
+// hooks/useProductsHook.js
 import { useState, useEffect } from 'react';
 import { productAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
-export const useProducts = (initialParams = {}) => {
+export const useProductsHook = (initialParams = {}) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

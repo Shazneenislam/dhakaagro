@@ -1,3 +1,4 @@
+// hooks/useCategories.js
 import { useState, useEffect } from 'react';
 import { categoryAPI } from '../services/api';
 

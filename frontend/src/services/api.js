@@ -1,5 +1,14 @@
+// api.js
 import axios from 'axios';
-import { API_CONFIG } from './apiConfig';
+
+// Define API_CONFIG first to avoid circular reference
+export const API_CONFIG = {
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  TIMEOUT: 10000,
+  HEADERS: {
+    'Content-Type': 'application/json',
+  },
+};
 
 console.log('🔧 [API] Initializing with config:', {
   baseURL: API_CONFIG.BASE_URL,

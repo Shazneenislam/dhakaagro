@@ -1,6 +1,6 @@
 export const API_CONFIG = {
-  // Try to get from env, fallback to localhost
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  // Use the correct base URL
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json',

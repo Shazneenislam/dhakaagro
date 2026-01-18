@@ -1,3 +1,4 @@
+// contexts/wishlistContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { wishlistAPI } from '../services/api';
 import toast from 'react-hot-toast';

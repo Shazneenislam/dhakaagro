@@ -1,3 +1,4 @@
+// contexts/cartContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { cartAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -84,7 +85,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const getCartItem = (productId) => {
-    return cart.items.find(item => item._id === productId);
+    return cart.items.find(item => item.product?._id === productId);
   };
 
   const value = {
