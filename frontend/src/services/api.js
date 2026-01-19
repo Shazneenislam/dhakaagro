@@ -1,4 +1,3 @@
-// api.js
 import axios from 'axios';
 
 // Define API_CONFIG first to avoid circular reference
@@ -101,27 +100,27 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
+// Auth API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const authAPI = {
   register: (userData) => {
     console.log('📡 [AuthAPI] Registering user:', { email: userData.email });
-    return api.post('/auth/register', userData);
+    return api.post('/api/auth/register', userData);
   },
   login: (credentials) => {
     console.log('📡 [AuthAPI] Logging in:', { email: credentials.email });
-    return api.post('/auth/login', credentials);
+    return api.post('/api/auth/login', credentials);
   },
   getMe: () => {
     console.log('📡 [AuthAPI] Getting current user');
-    return api.get('/auth/me');
+    return api.get('/api/auth/me');
   },
   updateProfile: (userData) => {
     console.log('📡 [AuthAPI] Updating profile');
-    return api.put('/auth/update-profile', userData);
+    return api.put('/api/auth/update-profile', userData);
   },
 };
 
-// Product API
+// Product API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const productAPI = {
   getProducts: (params = {}) => {
     console.log('📡 [ProductAPI] Getting products with params:', {
@@ -132,167 +131,171 @@ export const productAPI = {
       page: params.page || 1,
       limit: params.limit || 10
     });
-    return api.get('/products', { params });
+    return api.get('/api/products', { params });
   },
   getProduct: (id) => {
     console.log('📡 [ProductAPI] Getting product by ID:', id);
-    return api.get(`/products/${id}`);
+    return api.get(`/api/products/${id}`);
   },
   getProductBySlug: (slug) => {
     console.log('📡 [ProductAPI] Getting product by slug:', slug);
-    return api.get(`/products/slug/${slug}`);
+    return api.get(`/api/products/slug/${slug}`);
   },
   createProduct: (productData) => {
     console.log('📡 [ProductAPI] Creating product:', { name: productData.name });
-    return api.post('/products', productData);
+    return api.post('/api/products', productData);
   },
   updateProduct: (id, productData) => {
     console.log('📡 [ProductAPI] Updating product:', id);
-    return api.put(`/products/${id}`, productData);
+    return api.put(`/api/products/${id}`, productData);
   },
   deleteProduct: (id) => {
     console.log('📡 [ProductAPI] Deleting product:', id);
-    return api.delete(`/products/${id}`);
+    return api.delete(`/api/products/${id}`);
   },
   createReview: (id, reviewData) => {
     console.log('📡 [ProductAPI] Creating review for product:', id);
-    return api.post(`/products/${id}/reviews`, reviewData);
+    return api.post(`/api/products/${id}/reviews`, reviewData);
   },
   getFeaturedProducts: () => {
     console.log('📡 [ProductAPI] Getting featured products');
-    return api.get('/products/featured');
+    return api.get('/api/products/featured');
   },
   getBestSellers: () => {
     console.log('📡 [ProductAPI] Getting best sellers');
-    return api.get('/products/best-sellers');
+    return api.get('/api/products/best-sellers');
   },
   getNewArrivals: () => {
     console.log('📡 [ProductAPI] Getting new arrivals');
-    return api.get('/products/new-arrivals');
+    return api.get('/api/products/new-arrivals');
   },
   getRelatedProducts: (id) => {
     console.log('📡 [ProductAPI] Getting related products for:', id);
-    return api.get(`/products/${id}/related`);
+    return api.get(`/api/products/${id}/related`);
   },
 };
 
-// Cart API
+// Cart API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const cartAPI = {
   getCart: () => {
     console.log('📡 [CartAPI] Getting cart');
-    return api.get('/cart');
+    return api.get('/api/cart');
   },
   addToCart: (productData) => {
     console.log('📡 [CartAPI] Adding to cart:', productData);
-    return api.post('/cart', productData);
+    return api.post('/api/cart', productData);
   },
   updateCartItem: (productId, data) => {
     console.log('📡 [CartAPI] Updating cart item:', { productId, data });
-    return api.put(`/cart/${productId}`, data);
+    return api.put(`/api/cart/${productId}`, data);
   },
   removeFromCart: (productId) => {
     console.log('📡 [CartAPI] Removing from cart:', productId);
-    return api.delete(`/cart/${productId}`);
+    return api.delete(`/api/cart/${productId}`);
   },
   clearCart: () => {
     console.log('📡 [CartAPI] Clearing cart');
-    return api.delete('/cart');
+    return api.delete('/api/cart');
   },
 };
 
-// Category API
+// Category API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const categoryAPI = {
   getCategories: () => {
     console.log('📡 [CategoryAPI] Getting all categories');
-    return api.get('/categories');
+    return api.get('/api/categories');
   },
   getCategory: (id) => {
     console.log('📡 [CategoryAPI] Getting category by ID:', id);
-    return api.get(`/categories/${id}`);
+    return api.get(`/api/categories/${id}`);
   },
   getCategoryBySlug: (slug) => {
     console.log('📡 [CategoryAPI] Getting category by slug:', slug);
-    return api.get(`/categories/slug/${slug}`);
+    return api.get(`/api/categories/slug/${slug}`);
   },
   getFeaturedCategories: () => {
     console.log('📡 [CategoryAPI] Getting featured categories');
-    return api.get('/categories/featured');
+    return api.get('/api/categories/featured');
   },
   createCategory: (categoryData) => {
     console.log('📡 [CategoryAPI] Creating category:', { name: categoryData.name });
-    return api.post('/categories', categoryData);
+    return api.post('/api/categories', categoryData);
   },
   updateCategory: (id, categoryData) => {
     console.log('📡 [CategoryAPI] Updating category:', id);
-    return api.put(`/categories/${id}`, categoryData);
+    return api.put(`/api/categories/${id}`, categoryData);
   },
   deleteCategory: (id) => {
     console.log('📡 [CategoryAPI] Deleting category:', id);
-    return api.delete(`/categories/${id}`);
+    return api.delete(`/api/categories/${id}`);
   },
 };
 
-// Order API
+// Order API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const orderAPI = {
   createOrder: (orderData) => {
     console.log('📡 [OrderAPI] Creating order');
-    return api.post('/orders', orderData);
+    return api.post('/api/orders', orderData);
   },
   getOrder: (id) => {
     console.log('📡 [OrderAPI] Getting order:', id);
-    return api.get(`/orders/${id}`);
+    return api.get(`/api/orders/${id}`);
   },
   getMyOrders: () => {
     console.log('📡 [OrderAPI] Getting my orders');
-    return api.get('/orders/myorders');
+    return api.get('/api/orders/myorders');
   },
   getAllOrders: () => {
     console.log('📡 [OrderAPI] Getting all orders');
-    return api.get('/orders');
+    return api.get('/api/orders');
   },
   updateToPaid: (id, paymentData) => {
     console.log('📡 [OrderAPI] Updating order to paid:', id);
-    return api.put(`/orders/${id}/pay`, paymentData);
+    return api.put(`/api/orders/${id}/pay`, paymentData);
   },
   updateToDelivered: (id) => {
     console.log('📡 [OrderAPI] Updating order to delivered:', id);
-    return api.put(`/orders/${id}/deliver`);
+    return api.put(`/api/orders/${id}/deliver`);
   },
   updateStatus: (id, statusData) => {
     console.log('📡 [OrderAPI] Updating order status:', { id, status: statusData.status });
-    return api.put(`/orders/${id}/status`, statusData);
+    return api.put(`/api/orders/${id}/status`, statusData);
   },
 };
 
-// Wishlist API
+// Wishlist API - ALL ENDPOINTS UPDATED WITH /api PREFIX
 export const wishlistAPI = {
   getWishlist: () => {
     console.log('📡 [WishlistAPI] Getting wishlist');
-    return api.get('/wishlist');
+    return api.get('/api/wishlist');
   },
   addToWishlist: (productId) => {
     console.log('📡 [WishlistAPI] Adding to wishlist:', productId);
-    return api.post('/wishlist', { productId });
+    return api.post('/api/wishlist', { productId });
   },
   removeFromWishlist: (productId) => {
     console.log('📡 [WishlistAPI] Removing from wishlist:', productId);
-    return api.delete(`/wishlist/${productId}`);
+    return api.delete(`/api/wishlist/${productId}`);
   },
   checkWishlist: (productId) => {
     console.log('📡 [WishlistAPI] Checking wishlist for:', productId);
-    return api.get(`/wishlist/check/${productId}`);
+    return api.get(`/api/wishlist/check/${productId}`);
   },
 };
 
-// Test API connection
+// Test API connection - UPDATED ENDPOINTS
 export const testAPI = {
   testConnection: () => {
     console.log('📡 [TestAPI] Testing connection to backend');
-    return api.get('/health');
+    return api.get('/health'); // This one doesn't need /api prefix (it's a direct endpoint)
   },
   testEndpoint: () => {
     console.log('📡 [TestAPI] Testing API endpoint');
-    return api.get('/api/test');
+    return api.get('/api/test'); // This needs /api prefix
+  },
+  testCORS: () => {
+    console.log('📡 [TestAPI] Testing CORS');
+    return api.get('/api/test-cors'); // This needs /api prefix
   },
 };
 
