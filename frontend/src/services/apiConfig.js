@@ -1,6 +1,6 @@
 export const API_CONFIG = {
   // Use the correct base URL
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  BASE_URL: process.env.REACT_APP_API_URL || 'https://dhakaagro.onrender.com',
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json',

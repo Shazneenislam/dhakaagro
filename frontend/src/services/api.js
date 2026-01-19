@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Define API_CONFIG first to avoid circular reference
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+  BASE_URL: process.env.REACT_APP_API_URL || 'https://dhakaagro.onrender.com',
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json',
