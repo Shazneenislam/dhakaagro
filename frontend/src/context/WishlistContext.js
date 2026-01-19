@@ -18,12 +18,21 @@ export const WishlistProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   const fetchWishlist = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('💖 [WishlistContext] No token found, skipping wishlist fetch');
+      setWishlist([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await wishlistAPI.getWishlist();
+      console.log('💖 [WishlistContext] Fetched wishlist:', data);
       setWishlist(data);
     } catch (error) {
       console.error('Error fetching wishlist:', error);
+      setWishlist([]);
     } finally {
       setLoading(false);
     }

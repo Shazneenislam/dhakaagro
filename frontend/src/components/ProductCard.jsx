@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Heart, ShoppingCart, Eye, Clock } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const ProductCard = ({ 
   product, 
@@ -9,7 +11,6 @@ const ProductCard = ({
   onBuyNow,
   onViewDetails,
   onToggleWishlist,
-  isWishlisted,
   showTimer = true,
   showCategory = true,
   showWishlist = true,
@@ -17,17 +18,23 @@ const ProductCard = ({
 }) => {
   const [localIsWishlisted, setLocalIsWishlisted] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
   
   const { addToCart } = useCart();
-  const { addToWishlist, removeFromWishlist } = useWishlist();
+  const { wishlist, addToWishlist, removeFromWishlist, fetchWishlist } = useWishlist();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    console.log('💖 [ProductCard] Wishlist status:', { 
-      productId: product?._id, 
-      isWishlisted 
-    });
-    setLocalIsWishlisted(isWishlisted);
-  }, [product?._id, isWishlisted]);
+    if (product?._id && wishlist) {
+      const isWishlisted = wishlist.some(item => item._id === product._id);
+      console.log('💖 [ProductCard] Wishlist check:', { 
+        productId: product._id, 
+        isWishlisted,
+        wishlistCount: wishlist.length 
+      });
+      setLocalIsWishlisted(isWishlisted);
+    }
+  }, [product?._id, wishlist]);
 
   if (!product) {
     return (
@@ -56,12 +63,24 @@ const ProductCard = ({
 
   const handleAddToCartClick = async () => {
     console.log('🛒 [ProductCard] Add to cart clicked:', name);
+    
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+
+    if (stock === 0) {
+      toast.error('Product is out of stock');
+      return;
+    }
+
     setIsAddingToCart(true);
     try {
       await addToCart(_id, 1);
+      toast.success('Added to cart');
       if (onAddToCart) onAddToCart();
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      toast.error(error.message || 'Failed to add to cart');
     } finally {
       setIsAddingToCart(false);
     }
@@ -69,20 +88,36 @@ const ProductCard = ({
 
   const handleToggleWishlistClick = async () => {
     console.log('💖 [ProductCard] Toggle wishlist:', name);
+    
+    if (!isAuthenticated) {
+      toast.error('Please login to save items to wishlist');
+      return;
+    }
+
+    setIsTogglingWishlist(true);
     try {
       if (localIsWishlisted) {
         await removeFromWishlist(_id);
+        toast.success('Removed from wishlist');
       } else {
         await addToWishlist(_id);
+        toast.success('Added to wishlist');
       }
-      setLocalIsWishlisted(!localIsWishlisted);
+      
+      // Refresh wishlist to get updated state
+      await fetchWishlist();
+      
       if (onToggleWishlist) onToggleWishlist();
     } catch (error) {
       console.error('Error toggling wishlist:', error);
+      toast.error(error.message || 'Failed to update wishlist');
+    } finally {
+      setIsTogglingWishlist(false);
     }
   };
 
   const formatTime = (seconds) => {
+    if (!seconds) return { days: 0, hours: 0, minutes: 0, secs: 0 };
     const days = Math.floor(seconds / (3600 * 24));
     const hours = Math.floor((seconds % (3600 * 24)) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -90,7 +125,7 @@ const ProductCard = ({
     return { days, hours, minutes, secs };
   };
 
-  const timerData = formatTime(timer || 0);
+  const timerData = formatTime(timer);
 
   return (
     <div className="group relative bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100">
@@ -107,7 +142,8 @@ const ProductCard = ({
       {showWishlist && (
         <button
           onClick={handleToggleWishlistClick}
-          className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors"
+          disabled={isTogglingWishlist}
+          className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
           <Heart
             className={`h-5 w-5 ${localIsWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}

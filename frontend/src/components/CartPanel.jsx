@@ -21,6 +21,13 @@ const CartPanel = ({ isOpen, onClose }) => {
       return;
     }
 
+    // Find the item to check stock
+    const cartItem = cart.items.find(item => item._id === productId);
+    if (cartItem && newQuantity > cartItem.stock) {
+      toast.error(`Only ${cartItem.stock} items available in stock`);
+      return;
+    }
+
     try {
       await updateCartItem(productId, newQuantity);
     } catch (error) {
