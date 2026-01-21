@@ -1,3 +1,4 @@
+// models/User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -21,7 +22,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a password'],
     minlength: 6,
-    select: false  // IMPORTANT: This hides password by default
+    select: false
   },
   phone: {
     type: String,
@@ -96,11 +97,11 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
   }
 };
 
-// ============ CART METHODS ============
+// ============ SIMPLIFIED CART METHODS ============
 
-userSchema.methods.addToCart = async function(productId, quantity = 1) {
+userSchema.methods.addToCart = function(productId, quantity = 1) {
   const cartItemIndex = this.cart.findIndex(
-    item => item.product.toString() === productId.toString()
+    item => item.product && item.product.toString() === productId.toString()
   );
   
   if (cartItemIndex > -1) {
@@ -109,13 +110,12 @@ userSchema.methods.addToCart = async function(productId, quantity = 1) {
     this.cart.push({ product: productId, quantity });
   }
   
-  await this.save();
-  return this.cart;
+  return this.save();
 };
 
-userSchema.methods.updateCartItem = async function(productId, quantity) {
+userSchema.methods.updateCartItem = function(productId, quantity) {
   const cartItemIndex = this.cart.findIndex(
-    item => item.product.toString() === productId.toString()
+    item => item.product && item.product.toString() === productId.toString()
   );
   
   if (cartItemIndex > -1) {
@@ -126,23 +126,20 @@ userSchema.methods.updateCartItem = async function(productId, quantity) {
     }
   }
   
-  await this.save();
-  return this.cart;
+  return this.save();
 };
 
-userSchema.methods.removeFromCart = async function(productId) {
+userSchema.methods.removeFromCart = function(productId) {
   this.cart = this.cart.filter(
-    item => item.product.toString() !== productId.toString()
+    item => !item.product || item.product.toString() !== productId.toString()
   );
   
-  await this.save();
-  return this.cart;
+  return this.save();
 };
 
-userSchema.methods.clearCart = async function() {
+userSchema.methods.clearCart = function() {
   this.cart = [];
-  await this.save();
-  return this.cart;
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);
