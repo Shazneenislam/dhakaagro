@@ -29,11 +29,9 @@ export const OrderProvider = ({ children }) => {
 
       const order = await response.json();
       setOrders(prev => [order, ...prev]);
-      toast.success('Order placed successfully!');
       return order;
     } catch (error) {
       console.error('Order creation error:', error);
-      toast.error('Failed to place order');
       throw error;
     } finally {
       setLoading(false);
@@ -57,9 +55,65 @@ export const OrderProvider = ({ children }) => {
       setOrders(ordersData);
     } catch (error) {
       console.error('Fetch orders error:', error);
-      toast.error('Failed to load orders');
+      throw error;
     } finally {
       setLoading(false);
+    }
+  }, [token]);
+
+  const getOrderById = useCallback((orderId) => {
+    return orders.find(order => order._id === orderId);
+  }, [orders]);
+
+  const updateOrderStatus = useCallback(async (orderId, status) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status');
+      }
+
+      const updatedOrder = await response.json();
+      setOrders(prev => prev.map(order => 
+        order._id === orderId ? updatedOrder : order
+      ));
+      return updatedOrder;
+    } catch (error) {
+      console.error('Update order status error:', error);
+      throw error;
+    }
+  }, [token]);
+
+  const cancelOrder = useCallback(async (orderId) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel order');
+      }
+
+      const updatedOrder = await response.json();
+      setOrders(prev => prev.map(order => 
+        order._id === orderId ? updatedOrder : order
+      ));
+      toast.success('Order cancelled successfully');
+      return updatedOrder;
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      toast.error('Failed to cancel order');
+      throw error;
     }
   }, [token]);
 
@@ -67,7 +121,10 @@ export const OrderProvider = ({ children }) => {
     orders,
     loading,
     createOrder,
-    fetchOrders
+    fetchOrders,
+    getOrderById,
+    updateOrderStatus,
+    cancelOrder
   };
 
   return (

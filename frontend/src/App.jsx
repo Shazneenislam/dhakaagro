@@ -9,16 +9,16 @@ import Promotional from "./components/Promotional";
 import BestSellers from "./components/AllProducts";
 import Footer from "./components/Footer";
 
-// Cart and Wishlist Panels
-import CartPanel from "./components/CartPanel";
-import WishlistPanel from "./components/WishlistPanel";
-
 // Context Providers
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import { ProductsProvider } from "./context/ProductsContext";
-import { OrderProvider } from './context/OrderContext';
+import { OrderProvider } from "./context/OrderContext"; // Add this import
+
+// Cart and Wishlist Panels
+import CartPanel from "./components/CartPanel";
+import WishlistPanel from "./components/WishlistPanel";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,28 +31,12 @@ function App() {
   const handleCloseCart = () => setCartOpen(false);
   const handleCloseWishlist = () => setWishlistOpen(false);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    const handleRouteChange = () => {
-      if (sidebarOpen) {
-        setSidebarOpen(false);
-      }
-    };
-    
-    // Listen for route changes
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [sidebarOpen]);
-
   return (
     <Router>
       <AuthProvider>
         <ProductsProvider>
           <CartProvider>
-            <OrderProvider>
+            <OrderProvider> {/* Add OrderProvider here */}
               <WishlistProvider>
                 <div className="min-h-screen bg-gray-50 flex">
                   {/* Mobile Overlay */}
@@ -85,9 +69,8 @@ function App() {
                     flex-1
                     min-h-screen
                     transition-all duration-300
-                    ${sidebarExpanded ? 'lg:ml-64' : 'lg:ml-16'}
+                    ${sidebarExpanded ? 'lg:ml-0' : 'lg:ml-0'}
                     ${sidebarOpen ? 'ml-0' : ''}
-                    w-full lg:w-auto
                   `}>
                     {/* Sticky Header */}
                     <div className="sticky top-0 z-30">
@@ -135,22 +118,14 @@ function App() {
                     },
                     success: {
                       duration: 4000,
-                      iconTheme: {
+                      theme: {
                         primary: '#425A8B',
-                        secondary: '#fff',
-                      },
-                    },
-                    error: {
-                      duration: 4000,
-                      iconTheme: {
-                        primary: '#ef4444',
-                        secondary: '#fff',
                       },
                     },
                   }}
                 />
               </WishlistProvider>
-            </OrderProvider>
+            </OrderProvider> {/* Close OrderProvider here */}
           </CartProvider>
         </ProductsProvider>
       </AuthProvider>
