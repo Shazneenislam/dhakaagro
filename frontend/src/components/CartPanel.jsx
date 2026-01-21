@@ -3,17 +3,19 @@ import { X, ShoppingCart, Trash2, Plus, Minus, Loader } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import CheckoutModal from './CheckoutModal';
 
 const CartPanel = ({ isOpen, onClose }) => {
   const { cart, loading, updateCartItem, removeFromCart, clearCart, fetchCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && isAuthenticated) {
       fetchCart();
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen, isAuthenticated, fetchCart]);
 
   const handleUpdateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) {
@@ -65,9 +67,19 @@ const CartPanel = ({ isOpen, onClose }) => {
       return;
     }
 
-    window.location.href = '/checkout';
+    // Show the checkout modal instead of redirecting
+    setShowCheckoutModal(true);
   };
 
+  const handleCloseCheckout = () => {
+    setShowCheckoutModal(false);
+    // Optional: Refresh cart data after checkout
+    if (isAuthenticated) {
+      fetchCart();
+    }
+  };
+
+  // Render for non-authenticated users
   if (!isAuthenticated) {
     return (
       <>
@@ -177,6 +189,10 @@ const CartPanel = ({ isOpen, onClose }) => {
                     src={item.image || item.product?.images?.[0]?.url}
                     alt={item.name}
                     className="w-20 h-20 object-cover rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://via.placeholder.com/80x80?text=Product';
+                    }}
                   />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
@@ -196,7 +212,7 @@ const CartPanel = ({ isOpen, onClose }) => {
                       <button
                         onClick={() => handleUpdateQuantity(item._id, item.quantity - 1)}
                         disabled={item.quantity <= 1}
-                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
+                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 transition-colors"
                       >
                         <Minus size={16} />
                       </button>
@@ -204,13 +220,13 @@ const CartPanel = ({ isOpen, onClose }) => {
                       <button
                         onClick={() => handleUpdateQuantity(item._id, item.quantity + 1)}
                         disabled={item.quantity >= item.stock}
-                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
+                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 transition-colors"
                       >
                         <Plus size={16} />
                       </button>
                       <button
                         onClick={() => handleRemoveItem(item._id)}
-                        className="ml-auto p-2 text-red-500 hover:bg-red-50 rounded"
+                        className="ml-auto p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -218,7 +234,7 @@ const CartPanel = ({ isOpen, onClose }) => {
 
                     {/* Item Total */}
                     <div className="text-right text-sm font-medium text-gray-700 mt-2">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${((item.price || 0) * (item.quantity || 0)).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -228,13 +244,13 @@ const CartPanel = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        {cart.items.length > 0 && (
+        {!loading && cart.items.length > 0 && (
           <div className="border-t border-gray-200 p-6">
             {/* Cart Summary */}
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium">${cart.total?.toFixed(2) || '0.00'}</span>
+                <span className="font-medium">${(cart.total || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Items</span>
@@ -258,7 +274,8 @@ const CartPanel = ({ isOpen, onClose }) => {
               <div className="flex gap-3">
                 <button
                   onClick={handleClearCart}
-                  className="flex-1 py-2 border border-red-500 text-red-500 font-medium rounded-lg hover:bg-red-50 transition-colors"
+                  disabled={loading}
+                  className="flex-1 py-2 border border-red-500 text-red-500 font-medium rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
                 >
                   Clear Cart
                 </button>
@@ -272,6 +289,13 @@ const CartPanel = ({ isOpen, onClose }) => {
             </div>
           </div>
         )}
+
+        {/* Checkout Modal */}
+        <CheckoutModal
+          isOpen={showCheckoutModal}
+          onClose={handleCloseCheckout}
+          cartTotal={cart.total || 0}
+        />
       </div>
     </>
   );
