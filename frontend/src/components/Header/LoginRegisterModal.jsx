@@ -35,7 +35,7 @@ const LoginRegisterModal = ({ isOpen, onClose, defaultTab = "login" }) => {
     try {
       if (activeTab === "login") {
         // Login logic
-        await login(formData.email, formData.password);
+        await login({ email: formData.email, password: formData.password });
         toast.success("Login successful!");
         onClose();
       } else {
