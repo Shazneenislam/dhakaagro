@@ -97,49 +97,7 @@ userSchema.methods.matchPassword = async function(enteredPassword) {
   }
 };
 
-// ============ SIMPLIFIED CART METHODS ============
-
-userSchema.methods.addToCart = function(productId, quantity = 1) {
-  const cartItemIndex = this.cart.findIndex(
-    item => item.product && item.product.toString() === productId.toString()
-  );
-  
-  if (cartItemIndex > -1) {
-    this.cart[cartItemIndex].quantity += quantity;
-  } else {
-    this.cart.push({ product: productId, quantity });
-  }
-  
-  return this.save();
-};
-
-userSchema.methods.updateCartItem = function(productId, quantity) {
-  const cartItemIndex = this.cart.findIndex(
-    item => item.product && item.product.toString() === productId.toString()
-  );
-  
-  if (cartItemIndex > -1) {
-    if (quantity <= 0) {
-      this.cart.splice(cartItemIndex, 1);
-    } else {
-      this.cart[cartItemIndex].quantity = quantity;
-    }
-  }
-  
-  return this.save();
-};
-
-userSchema.methods.removeFromCart = function(productId) {
-  this.cart = this.cart.filter(
-    item => !item.product || item.product.toString() !== productId.toString()
-  );
-  
-  return this.save();
-};
-
-userSchema.methods.clearCart = function() {
-  this.cart = [];
-  return this.save();
-};
+// Remove all custom cart methods - they're causing the issue
+// Your cartController already handles all cart logic
 
 module.exports = mongoose.model('User', userSchema);
