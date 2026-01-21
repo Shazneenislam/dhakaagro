@@ -10,8 +10,8 @@ import BestSellers from "./components/AllProducts";
 import Footer from "./components/Footer";
 
 // Cart and Wishlist Panels
-import CartPanel from "./components/Cart/CartPanel";
-import WishlistPanel from "./components/Wishlist/WishlistPanel";
+import CartPanel from "./components/CartPanel";
+import WishlistPanel from "./components/WishlistPanel";
 
 // Context Providers
 import { AuthProvider } from "./context/AuthContext";
