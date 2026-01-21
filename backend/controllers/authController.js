@@ -54,23 +54,52 @@ exports.register = async (req, res) => {
 // @access  Public
 exports.login = async (req, res) => {
   try {
+    console.log('🔐 [Backend] Login attempt received:', { 
+      email: req.body.email,
+      hasPassword: !!req.body.password,
+      timestamp: new Date().toISOString()
+    });
+    
     const { email, password } = req.body;
-
+    
+    // Validate input
+    if (!email || !password) {
+      console.log('❌ [Backend] Missing email or password');
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
+    
+    console.log('🔍 [Backend] Looking for user:', email);
+    
     // Check for user email
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
+      console.log('❌ [Backend] User not found:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    
+    console.log('✅ [Backend] User found:', { id: user._id, email: user.email });
+    
     // Check if password matches
+    console.log('🔑 [Backend] Checking password...');
     const isMatch = await user.matchPassword(password);
     
     if (!isMatch) {
+      console.log('❌ [Backend] Password mismatch for user:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    
+    console.log('✅ [Backend] Password verified successfully');
+    
+    // Generate token
+    console.log('🎫 [Backend] Generating JWT token...');
     const token = generateToken(user._id);
+    
+    console.log('✅ [Backend] Login successful:', { 
+      userId: user._id, 
+      email: user.email,
+      timestamp: new Date().toISOString()
+    });
     
     res.json({
       _id: user._id,
@@ -81,8 +110,19 @@ exports.login = async (req, res) => {
       avatar: user.avatar,
       token
     });
+    
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('🔥 [Backend] Login error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.status(500).json({ 
+      message: 'Server error during login',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
