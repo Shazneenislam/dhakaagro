@@ -86,7 +86,9 @@ exports.addToWishlist = async (req, res) => {
 
     // Add to wishlist
     user.wishlist.push(productId);
-    await user.save();
+    
+    // LINE 89: This triggers the pre-save middleware in User.js
+    await user.save(); // <-- LINE 89
     
     console.log('✅ [Backend] Product added to wishlist:', product.name);
     

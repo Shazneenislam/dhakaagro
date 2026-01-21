@@ -71,19 +71,18 @@ const userSchema = new mongoose.Schema({
 
 // ============ PASSWORD HANDLING ============
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
+// Hash password before saving - FIXED VERSION
+userSchema.pre('save', async function() {
   // Only hash if password was modified (or is new)
   if (!this.isModified('password')) {
-    return next();
+    return; // Just return, no next() call
   }
   
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
   } catch (error) {
-    next(error);
+    throw error; // Throw error instead of calling next(error)
   }
 });
 

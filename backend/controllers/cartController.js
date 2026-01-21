@@ -146,7 +146,8 @@ exports.addToCart = async (req, res) => {
       });
     }
     
-    await user.save();
+    // LINE 149: This triggers the pre-save middleware in User.js
+    await user.save(); // <-- LINE 149
     
     console.log('✅ [Backend] Product added to cart:', product.name);
     
