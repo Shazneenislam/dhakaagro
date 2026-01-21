@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -19,7 +20,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Please add a password'],
-    minlength: 6
+    minlength: 6,
+    select: false  // IMPORTANT: This hides password by default
   },
   phone: {
     type: String,
@@ -37,6 +39,10 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  avatar: {
+    type: String,
+    default: '/uploads/default-avatar.png'
+  },
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -50,6 +56,10 @@ const userSchema = new mongoose.Schema({
       type: Number,
       default: 1,
       min: 1
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
     }
   }],
   createdAt: {
@@ -58,82 +68,81 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Add to cart
-userSchema.methods.addToCart = async function(productId, quantity = 1) {
+// ============ PASSWORD HANDLING ============
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  // Only hash if password was modified (or is new)
+  if (!this.isModified('password')) {
+    return next();
+  }
+  
   try {
-    const cartItemIndex = this.cart.findIndex(
-      item => item.product && item.product.toString() === productId.toString()
-    );
-
-    if (cartItemIndex > -1) {
-      this.cart[cartItemIndex].quantity += quantity;
-    } else {
-      this.cart.push({
-        product: productId,
-        quantity
-      });
-    }
-
-    await this.save();
-    return this.cart;
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
   } catch (error) {
-    throw new Error(`Failed to add to cart: ${error.message}`);
+    next(error);
+  }
+});
+
+// Method to compare passwords
+userSchema.methods.matchPassword = async function(enteredPassword) {
+  try {
+    return await bcrypt.compare(enteredPassword, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    throw new Error('Password comparison failed');
   }
 };
 
-// Update cart item
+// ============ CART METHODS ============
+
+userSchema.methods.addToCart = async function(productId, quantity = 1) {
+  const cartItemIndex = this.cart.findIndex(
+    item => item.product.toString() === productId.toString()
+  );
+  
+  if (cartItemIndex > -1) {
+    this.cart[cartItemIndex].quantity += quantity;
+  } else {
+    this.cart.push({ product: productId, quantity });
+  }
+  
+  await this.save();
+  return this.cart;
+};
+
 userSchema.methods.updateCartItem = async function(productId, quantity) {
-  try {
-    const cartItemIndex = this.cart.findIndex(
-      item => item.product && item.product.toString() === productId.toString()
-    );
-
-    if (cartItemIndex === -1) {
-      throw new Error('Product not found in cart');
-    }
-
-    if (quantity < 1) {
-      // Remove item if quantity is less than 1
+  const cartItemIndex = this.cart.findIndex(
+    item => item.product.toString() === productId.toString()
+  );
+  
+  if (cartItemIndex > -1) {
+    if (quantity <= 0) {
       this.cart.splice(cartItemIndex, 1);
     } else {
       this.cart[cartItemIndex].quantity = quantity;
     }
-
-    await this.save();
-    return this.cart;
-  } catch (error) {
-    throw new Error(`Failed to update cart item: ${error.message}`);
   }
+  
+  await this.save();
+  return this.cart;
 };
 
-// Remove from cart
 userSchema.methods.removeFromCart = async function(productId) {
-  try {
-    const initialLength = this.cart.length;
-    this.cart = this.cart.filter(
-      item => !item.product || item.product.toString() !== productId.toString()
-    );
-    
-    if (this.cart.length === initialLength) {
-      throw new Error('Product not found in cart');
-    }
-
-    await this.save();
-    return this.cart;
-  } catch (error) {
-    throw new Error(`Failed to remove from cart: ${error.message}`);
-  }
+  this.cart = this.cart.filter(
+    item => item.product.toString() !== productId.toString()
+  );
+  
+  await this.save();
+  return this.cart;
 };
 
-// Clear cart
 userSchema.methods.clearCart = async function() {
-  try {
-    this.cart = [];
-    await this.save();
-    return this.cart;
-  } catch (error) {
-    throw new Error(`Failed to clear cart: ${error.message}`);
-  }
+  this.cart = [];
+  await this.save();
+  return this.cart;
 };
 
 module.exports = mongoose.model('User', userSchema);
