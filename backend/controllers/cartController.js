@@ -1,3 +1,4 @@
+// controllers/cartController.js
 const User = require('../models/User');
 const Product = require('../models/Product');
 
@@ -149,14 +150,10 @@ exports.addToCart = async (req, res) => {
     
     console.log('✅ [Backend] Product added to cart:', product.name);
     
+    // Send minimal response
     res.status(201).json({
       success: true,
-      message: 'Product added to cart',
-      product: {
-        _id: product._id,
-        name: product.name,
-        price: product.price
-      }
+      message: 'Product added to cart'
     });
   } catch (error) {
     console.error('❌ [Backend] Error in addToCart:', error);
