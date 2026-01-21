@@ -55,44 +55,37 @@ export const CartProvider = ({ children }) => {
   }, [isAuthenticated, fetchCart]); // Add fetchCart to dependencies
 
   const addToCart = async (productId, quantity = 1) => {
-    console.log('🛒 [CartContext] Adding to cart:', { productId, quantity });
-    
-    if (!isAuthenticated) {
-      toast.error('Please login to add items to cart');
-      throw new Error('User not authenticated');
-    }
+  console.log('🛒 [CartContext] Adding to cart:', { productId, quantity });
+  
+  if (!isAuthenticated) {
+    toast.error('Please login to add items to cart');
+    throw new Error('User not authenticated');
+  }
 
-    try {
-      const response = await cartAPI.addToCart({ productId, quantity });
-      console.log('🛒 [CartContext] Add to cart response:', response);
-      
-      // Update local cart state optimistically
-      const productExists = cart.items.find(item => item._id === productId);
-      if (productExists) {
-        // Update quantity
-        setCart(prev => ({
-          ...prev,
-          items: prev.items.map(item => 
-            item._id === productId 
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          ),
-          total: prev.total + (productExists.price * quantity),
-          itemCount: prev.itemCount + quantity
-        }));
-      } else {
-        // Need to fetch fresh data for new item
-        await fetchCart();
-      }
-      
-      toast.success('Added to cart');
-      return response;
-    } catch (error) {
-      console.error('❌ [CartContext] Error adding to cart:', error);
-      toast.error(error.message || 'Failed to add to cart');
-      throw error;
+  try {
+    const response = await cartAPI.addToCart({ productId, quantity });
+    console.log('🛒 [CartContext] Add to cart response:', response);
+    
+    // Refresh cart data
+    await fetchCart();
+    
+    toast.success('Added to cart');
+    return response;
+  } catch (error) {
+    console.error('❌ [CartContext] Error adding to cart:', error);
+    
+    // More detailed error message
+    let errorMessage = 'Failed to add to cart';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
-  };
+    
+    toast.error(errorMessage);
+    throw error;
+  }
+};
 
   const updateCartItem = async (productId, { quantity }) => {
     console.log('🛒 [CartContext] Updating cart item:', { productId, quantity });
