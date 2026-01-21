@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@tanstack/react-query": "^5.90.18",
-    "axios": "^1.7.9",
+    "axios": "^1.13.2",
     "lucide-react": "^0.478.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -20,7 +20,9 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": ["react-app"]
+    "extends": [
+      "react-app"
+    ]
   },
   "browserslist": {
     "production": [
@@ -35,9 +37,9 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
-    "@testing-library/jest-dom": "^6.6.2",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-react-app": "^7.0.1",

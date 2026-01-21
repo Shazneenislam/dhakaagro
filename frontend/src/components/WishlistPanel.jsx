@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // Add useCallback
 import { X, Heart, ShoppingCart, Trash2, Loader } from "lucide-react";
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
@@ -11,11 +11,16 @@ const WishlistPanel = ({ isOpen, onClose }) => {
   const { isAuthenticated } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
+  // Memoize the effect function to fix dependency warning
+  const fetchWishlistData = useCallback(() => {
     if (isOpen && isAuthenticated) {
       fetchWishlist();
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen, isAuthenticated, fetchWishlist]); // Add fetchWishlist to dependencies
+
+  useEffect(() => {
+    fetchWishlistData();
+  }, [fetchWishlistData]); // Now use the memoized function
 
   const handleRemoveItem = async (productId) => {
     try {

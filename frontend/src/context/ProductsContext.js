@@ -1,4 +1,3 @@
-// contexts/productsContext.js
 import React, { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import { productAPI, categoryAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -656,7 +655,7 @@ export const ProductsProvider = ({ children }) => {
     }
   }, [fetchProducts, fetchFeaturedProducts, fetchBestSellers, fetchNewArrivals, fetchCategories, fetchFeaturedCategories]);
 
-  // ✅ FIXED: Initial data fetch - ONLY ON MOUNT
+  // ✅ FIXED: Initial data fetch - WITH ALL DEPENDENCIES
   useEffect(() => {
     if (isInitialMount.current) {
       console.log('🚀 [ProductsContext] Initial mount - fetching initial data');
@@ -685,7 +684,14 @@ export const ProductsProvider = ({ children }) => {
       initializeData();
       isInitialMount.current = false;
     }
-  }, []); // Empty dependency array - ONLY run once on mount
+  }, [
+    fetchProducts, 
+    fetchCategories, 
+    fetchFeaturedProducts, 
+    fetchBestSellers, 
+    fetchNewArrivals, 
+    fetchFeaturedCategories
+  ]); // Add all dependencies as requested by ESLint
 
   // Helper functions (client-side filtering if needed)
   const getProductById = useCallback((id) => {
