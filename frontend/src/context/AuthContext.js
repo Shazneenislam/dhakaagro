@@ -31,20 +31,17 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      // Try to get fresh user data
       const userData = await authAPI.getMe();
-      setUser(userData);
+      setUser(userData.user);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(userData.user));
     } catch (error) {
-      console.error('Auth check failed, using stored user:', error);
-      // Fall back to stored user data
+      console.error('Auth check failed:', error);
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
           setIsAuthenticated(true);
         } catch (parseError) {
-          console.error('Failed to parse stored user:', parseError);
           logout();
         }
       }
@@ -55,11 +52,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      console.log('📝 [AuthContext] Registering user:', { 
-        email: userData.email, 
-        name: userData.name 
-      });
-      
+      console.log('📝 Registering:', userData.email);
       const response = await authAPI.register(userData);
       
       localStorage.setItem('token', response.token);
@@ -80,32 +73,18 @@ export const AuthProvider = ({ children }) => {
       });
       setIsAuthenticated(true);
       
-      console.log('✅ [AuthContext] Registration successful:', response.email);
       toast.success('Registration successful!');
       return response;
     } catch (error) {
-      console.error('❌ [AuthContext] Registration failed:', error);
+      console.error('❌ Registration failed:', error);
       toast.error(error.message || 'Registration failed');
       throw error;
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (credentials) => {
     try {
-      // Handle both parameter formats
-      let credentials;
-      if (typeof email === 'object' && email !== null) {
-        credentials = email;
-      } else if (typeof email === 'string' && typeof password === 'string') {
-        credentials = { email, password };
-      } else {
-        throw new Error('Invalid login parameters');
-      }
-
-      console.log('🔐 [AuthContext] Logging in with:', { 
-        email: credentials.email 
-      });
-
+      console.log('🔐 Logging in:', credentials.email);
       const response = await authAPI.login(credentials);
       
       localStorage.setItem('token', response.token);
@@ -128,11 +107,10 @@ export const AuthProvider = ({ children }) => {
       });
       setIsAuthenticated(true);
       
-      console.log('✅ [AuthContext] Login successful:', response.email);
       toast.success('Login successful!');
       return response;
     } catch (error) {
-      console.error('❌ [AuthContext] Login failed:', error);
+      console.error('❌ Login failed:', error);
       toast.error(error.message || 'Login failed');
       throw error;
     }
@@ -146,15 +124,14 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
-  const updateProfile = async (userData) => {
+  const createTestUser = async () => {
     try {
-      const response = await authAPI.updateProfile(userData);
-      setUser(response);
-      localStorage.setItem('user', JSON.stringify(response));
-      toast.success('Profile updated successfully');
+      const response = await authAPI.createTestUser();
+      toast.success('Test user created!');
       return response;
     } catch (error) {
-      toast.error(error.message || 'Profile update failed');
+      console.error('Test user creation failed:', error);
+      toast.error(error.message || 'Test user creation failed');
       throw error;
     }
   };
@@ -166,7 +143,7 @@ export const AuthProvider = ({ children }) => {
     register,
     login,
     logout,
-    updateProfile,
+    createTestUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
