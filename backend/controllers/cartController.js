@@ -1,91 +1,169 @@
-const Product = require('../models/Product');
 const User = require('../models/User');
+const Product = require('../models/Product');
 
 // @desc    Get user cart
 // @route   GET /api/cart
 // @access  Private
-const getCart = async (req, res) => {
+exports.getCart = async (req, res) => {
   try {
     console.log('🛒 [Backend] Getting cart for user:', req.user.id);
     
-    const user = await User.findById(req.user.id).populate('cart.product');
+    const user = await User.findById(req.user.id)
+      .populate('cart.product', 'name price originalPrice discount images stock slug category')
+      .select('cart');
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
     }
 
-    // Calculate cart total
+    // Calculate cart totals
     let total = 0;
+    let itemCount = 0;
+    
     const cartItems = user.cart.map(item => {
       if (!item.product) {
         return null;
       }
       
-      const itemTotal = item.product.price * item.quantity;
+      const product = item.product;
+      const quantity = item.quantity || 1;
+      const price = product.price || 0;
+      const itemTotal = price * quantity;
+      
       total += itemTotal;
+      itemCount += quantity;
       
       return {
-        _id: item.product._id,
-        name: item.product.name,
-        price: item.product.price,
-        originalPrice: item.product.originalPrice,
-        discount: item.product.discount,
-        image: item.product.images[0]?.url || '',
-        quantity: item.quantity,
-        stock: item.product.stock,
-        itemTotal
+        _id: product._id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        discount: product.discount,
+        image: product.images?.[0]?.url || '',
+        quantity: quantity,
+        stock: product.stock || 0,
+        slug: product.slug,
+        category: product.category,
+        itemTotal: parseFloat(itemTotal.toFixed(2))
       };
     }).filter(item => item !== null);
 
-    console.log('🛒 [Backend] Cart items calculated:', cartItems.length);
+    console.log('🛒 [Backend] Cart calculated:', {
+      items: cartItems.length,
+      total: total,
+      itemCount: itemCount
+    });
     
     res.json({
+      success: true,
       items: cartItems,
       total: parseFloat(total.toFixed(2)),
-      itemCount: user.cart.reduce((acc, item) => acc + item.quantity, 0)
+      itemCount: itemCount
     });
   } catch (error) {
     console.error('❌ [Backend] Error in getCart:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
 // @desc    Add item to cart
 // @route   POST /api/cart
 // @access  Private
-const addToCart = async (req, res) => {
+exports.addToCart = async (req, res) => {
   try {
     const { productId, quantity = 1 } = req.body;
     
-    console.log('🛒 [Backend] Adding to cart:', { productId, quantity, userId: req.user.id });
+    console.log('🛒 [Backend] Adding to cart:', { 
+      userId: req.user.id,
+      productId: productId,
+      quantity: quantity 
+    });
     
+    // Validate input
+    if (!productId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Product ID is required' 
+      });
+    }
+    
+    // Check if product exists
     const product = await Product.findById(productId);
     
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Product not found' 
+      });
     }
-
+    
+    // Check stock
     if (product.stock < quantity) {
       return res.status(400).json({ 
+        success: false,
         message: `Only ${product.stock} items available in stock` 
       });
     }
-
+    
     const user = await User.findById(req.user.id);
     
-    // Use the helper method from the User model
-    await user.addToCart(productId, quantity);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
     
-    console.log('✅ [Backend] Product added to cart successfully');
+    // Check if product already in cart
+    const cartItemIndex = user.cart.findIndex(
+      item => item.product && item.product.toString() === productId
+    );
+    
+    if (cartItemIndex > -1) {
+      // Update quantity
+      user.cart[cartItemIndex].quantity += quantity;
+      
+      // Check stock again with new quantity
+      if (product.stock < user.cart[cartItemIndex].quantity) {
+        return res.status(400).json({ 
+          success: false,
+          message: `Only ${product.stock} items available in stock` 
+        });
+      }
+    } else {
+      // Add new item to cart
+      user.cart.push({
+        product: productId,
+        quantity: quantity
+      });
+    }
+    
+    await user.save();
+    
+    console.log('✅ [Backend] Product added to cart:', product.name);
     
     res.status(201).json({
+      success: true,
       message: 'Product added to cart',
-      success: true
+      product: {
+        _id: product._id,
+        name: product.name,
+        price: product.price
+      }
     });
   } catch (error) {
     console.error('❌ [Backend] Error in addToCart:', error);
     res.status(500).json({ 
-      message: error.message || 'Failed to add to cart'
+      success: false,
+      message: 'Failed to add to cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -93,36 +171,78 @@ const addToCart = async (req, res) => {
 // @desc    Update cart item quantity
 // @route   PUT /api/cart/:productId
 // @access  Private
-const updateCartItem = async (req, res) => {
+exports.updateCartItem = async (req, res) => {
   try {
-    const { quantity } = req.body;
     const { productId } = req.params;
-
+    const { quantity } = req.body;
+    
+    console.log('🛒 [Backend] Updating cart item:', { 
+      userId: req.user.id,
+      productId: productId,
+      quantity: quantity 
+    });
+    
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Quantity must be at least 1' 
+      });
+    }
+    
     const product = await Product.findById(productId);
     
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Product not found' 
+      });
     }
-
-    if (quantity > product.stock) {
+    
+    // Check stock
+    if (product.stock < quantity) {
       return res.status(400).json({ 
+        success: false,
         message: `Only ${product.stock} items available in stock` 
       });
     }
-
+    
     const user = await User.findById(req.user.id);
     
-    // Use the helper method from the User model
-    await user.updateCartItem(productId, quantity);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+    
+    const cartItemIndex = user.cart.findIndex(
+      item => item.product && item.product.toString() === productId
+    );
+    
+    if (cartItemIndex === -1) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Product not found in cart' 
+      });
+    }
+    
+    // Update quantity
+    user.cart[cartItemIndex].quantity = quantity;
+    
+    await user.save();
+    
+    console.log('✅ [Backend] Cart updated:', product.name);
     
     res.json({
-      message: 'Cart updated',
-      success: true
+      success: true,
+      message: 'Cart updated successfully'
     });
   } catch (error) {
     console.error('❌ [Backend] Error in updateCartItem:', error);
     res.status(500).json({ 
-      message: error.message || 'Failed to update cart'
+      success: false,
+      message: 'Failed to update cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -130,23 +250,50 @@ const updateCartItem = async (req, res) => {
 // @desc    Remove item from cart
 // @route   DELETE /api/cart/:productId
 // @access  Private
-const removeFromCart = async (req, res) => {
+exports.removeFromCart = async (req, res) => {
   try {
     const { productId } = req.params;
-
+    
+    console.log('🛒 [Backend] Removing from cart:', { 
+      userId: req.user.id,
+      productId: productId 
+    });
+    
     const user = await User.findById(req.user.id);
     
-    // Use the helper method from the User model
-    await user.removeFromCart(productId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
     
-    res.json({ 
-      message: 'Product removed from cart',
-      success: true 
+    const initialLength = user.cart.length;
+    user.cart = user.cart.filter(
+      item => !item.product || item.product.toString() !== productId
+    );
+    
+    if (user.cart.length === initialLength) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Product not found in cart' 
+      });
+    }
+    
+    await user.save();
+    
+    console.log('✅ [Backend] Product removed from cart');
+    
+    res.json({
+      success: true,
+      message: 'Product removed from cart'
     });
   } catch (error) {
     console.error('❌ [Backend] Error in removeFromCart:', error);
     res.status(500).json({ 
-      message: error.message || 'Failed to remove from cart'
+      success: false,
+      message: 'Failed to remove from cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -154,29 +301,129 @@ const removeFromCart = async (req, res) => {
 // @desc    Clear cart
 // @route   DELETE /api/cart
 // @access  Private
-const clearCart = async (req, res) => {
+exports.clearCart = async (req, res) => {
   try {
+    console.log('🛒 [Backend] Clearing cart for user:', req.user.id);
+    
     const user = await User.findById(req.user.id);
     
-    // Use the helper method from the User model
-    await user.clearCart();
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
     
-    res.json({ 
-      message: 'Cart cleared',
-      success: true 
+    user.cart = [];
+    await user.save();
+    
+    console.log('✅ [Backend] Cart cleared');
+    
+    res.json({
+      success: true,
+      message: 'Cart cleared successfully'
     });
   } catch (error) {
     console.error('❌ [Backend] Error in clearCart:', error);
     res.status(500).json({ 
-      message: error.message || 'Failed to clear cart'
+      success: false,
+      message: 'Failed to clear cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-module.exports = {
-  getCart,
-  addToCart,
-  updateCartItem,
-  removeFromCart,
-  clearCart
+// @desc    Get cart count
+// @route   GET /api/cart/count
+// @access  Private
+exports.getCartCount = async (req, res) => {
+  try {
+    console.log('🛒 [Backend] Getting cart count for user:', req.user.id);
+    
+    const user = await User.findById(req.user.id).select('cart');
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+    
+    const itemCount = user.cart.reduce((total, item) => total + (item.quantity || 1), 0);
+    
+    res.json({
+      success: true,
+      itemCount: itemCount
+    });
+  } catch (error) {
+    console.error('❌ [Backend] Error in getCartCount:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get cart count',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Merge cart (for guest to logged in user)
+// @route   POST /api/cart/merge
+// @access  Private
+exports.mergeCart = async (req, res) => {
+  try {
+    const { items } = req.body;
+    
+    console.log('🛒 [Backend] Merging cart for user:', req.user.id);
+    
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid cart items' 
+      });
+    }
+    
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+    
+    // Merge guest cart with user cart
+    for (const item of items) {
+      if (!item.productId || !item.quantity) continue;
+      
+      const cartItemIndex = user.cart.findIndex(
+        cartItem => cartItem.product && cartItem.product.toString() === item.productId
+      );
+      
+      if (cartItemIndex > -1) {
+        // Update quantity
+        user.cart[cartItemIndex].quantity += item.quantity;
+      } else {
+        // Add new item
+        user.cart.push({
+          product: item.productId,
+          quantity: item.quantity
+        });
+      }
+    }
+    
+    await user.save();
+    
+    console.log('✅ [Backend] Cart merged successfully');
+    
+    res.json({
+      success: true,
+      message: 'Cart merged successfully'
+    });
+  } catch (error) {
+    console.error('❌ [Backend] Error in mergeCart:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to merge cart',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
