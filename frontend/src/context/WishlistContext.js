@@ -27,11 +27,22 @@ export const WishlistProvider = ({ children }) => {
 
     try {
       setLoading(true);
-      const data = await wishlistAPI.getWishlist();
-      console.log('💖 [WishlistContext] Fetched wishlist:', data);
-      setWishlist(data);
+      const response = await wishlistAPI.getWishlist();
+      console.log('💖 [WishlistContext] Fetched wishlist response:', response);
+      
+      // Handle different response formats
+      if (response && response.wishlist) {
+        // If response has a wishlist property
+        setWishlist(response.wishlist);
+      } else if (Array.isArray(response)) {
+        // If response is directly an array
+        setWishlist(response);
+      } else {
+        console.error('💖 [WishlistContext] Unexpected response format:', response);
+        setWishlist([]);
+      }
     } catch (error) {
-      console.error('Error fetching wishlist:', error);
+      console.error('❌ [WishlistContext] Error fetching wishlist:', error);
       setWishlist([]);
     } finally {
       setLoading(false);
@@ -70,7 +81,7 @@ export const WishlistProvider = ({ children }) => {
   const checkWishlist = async (productId) => {
     try {
       const response = await wishlistAPI.checkWishlist(productId);
-      return response.isInWishlist;
+      return response.isInWishlist || false;
     } catch (error) {
       return false;
     }
