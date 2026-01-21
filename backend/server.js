@@ -116,7 +116,7 @@ if (!modularRoutesLoaded) {
       const userExists = await User.findOne({ email });
       
       if (userExists) {
-        return res.status(400).json({ message: 'User exists' });
+        return res.status(400).json({ message: 'User already exists' });
       }
       
       const user = await User.create({ name, email, password, phone });
@@ -155,12 +155,14 @@ if (!modularRoutesLoaded) {
       const user = await User.findOne({ email }).select('+password');
       
       if (!user) {
+        console.log('❌ User not found:', email);
         return res.status(401).json({ message: 'Invalid credentials' });
       }
       
       const isMatch = await bcrypt.compare(password, user.password);
       
       if (!isMatch) {
+        console.log('❌ Password mismatch for:', email);
         return res.status(401).json({ message: 'Invalid credentials' });
       }
       
@@ -182,7 +184,10 @@ if (!modularRoutesLoaded) {
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ 
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
   
@@ -192,6 +197,64 @@ if (!modularRoutesLoaded) {
       res.json(req.user);
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // ============ CREATE TEST USER ENDPOINT ============
+  app.post('/api/create-test-user', async (req, res) => {
+    try {
+      console.log('👤 Creating test user...');
+      const User = require('./models/User');
+      
+      // Check if test user already exists
+      const existingUser = await User.findOne({ email: 'test@example.com' });
+      
+      if (existingUser) {
+        console.log('✅ Test user already exists');
+        return res.json({
+          success: true,
+          message: 'Test user already exists',
+          user: {
+            email: existingUser.email,
+            id: existingUser._id
+          },
+          credentials: {
+            email: 'test@example.com',
+            password: 'password123'
+          }
+        });
+      }
+      
+      // Create new test user
+      const user = await User.create({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+        phone: '1234567890'
+      });
+      
+      console.log('✅ Test user created:', user.email);
+      
+      res.json({
+        success: true,
+        message: 'Test user created successfully',
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name
+        },
+        credentials: {
+          email: 'test@example.com',
+          password: 'password123'
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error creating test user:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
   
@@ -279,6 +342,7 @@ app.get('/', (req, res) => {
       '/api/auth/login',
       '/api/auth/register',
       '/api/auth/me',
+      '/api/create-test-user',
       '/api/products',
       '/api/categories'
     ]
@@ -291,16 +355,26 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: `Route not found: ${req.method} ${req.url}`,
-    availableRoutes: ['/health', '/api/test', '/api/auth/*', '/api/products/*', '/api/categories/*']
+    availableRoutes: [
+      '/health',
+      '/api/test',
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/create-test-user',
+      '/api/products',
+      '/api/categories'
+    ]
   });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error('🔥 Server Error:', err.message);
+  console.error('Stack:', err.stack);
   res.status(500).json({
     success: false,
-    error: 'Server error'
+    error: 'Server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
