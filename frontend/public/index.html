@@ -2,42 +2,214 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="./Logo2.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <!-- Favicon -->
+    <link rel="icon" href="%PUBLIC_URL%/Logo2.png" type="image/png" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/Logo2.png" />
+    
+    <!-- PWA Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>Dhaka Agro</title>
+    
+    <!-- Title and Meta Tags -->
+    <title>Dhaka Agro - Fresh Farm Products in Dhaka</title>
+    <meta name="theme-color" content="#425A8B" />
+    <meta name="description" content="Fresh vegetables, fruits, dairy products, and groceries delivered to your doorstep in Dhaka. Shop the best quality farm products online." />
+    <meta name="keywords" content="Dhaka Agro, fresh vegetables, fruits online, dairy products, groceries delivery, farm products Dhaka, online shopping Bangladesh" />
+    <meta name="author" content="Dhaka Agro" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://dhakaagro.onrender.com/" />
+    <meta property="og:title" content="Dhaka Agro - Fresh Farm Products Online" />
+    <meta property="og:description" content="Get fresh vegetables, fruits, dairy products and groceries delivered to your doorstep in Dhaka" />
+    <meta property="og:image" content="%PUBLIC_URL%/Logo2.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://dhakaagro.onrender.com/" />
+    <meta property="twitter:title" content="Dhaka Agro - Fresh Farm Products Online" />
+    <meta property="twitter:description" content="Get fresh vegetables, fruits, dairy products and groceries delivered to your doorstep in Dhaka" />
+    <meta property="twitter:image" content="%PUBLIC_URL%/Logo2.png" />
+    
+    <!-- PWA Configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Dhaka Agro" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#425A8B" />
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/Logo2.png" />
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+    
+    <!-- Font Preconnect for better performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" as="style" href="%PUBLIC_URL%/static/css/main.chunk.css" />
+    
+    <!-- Additional styling for PWA splash screens -->
+    <style>
+      /* PWA Splash Screen Styles */
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f8f9fa;
+      }
+      
+      /* Loading screen styles */
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* App loading animation */
+      .app-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #425A8B;
+        color: white;
+      }
+      
+      .app-loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        margin-bottom: 20px;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- Loading screen for better PWA experience -->
+    <div id="app-loading" class="app-loading" style="display: none;">
+      <div class="app-loading-spinner"></div>
+      <h1>Dhaka Agro</h1>
+      <p>Loading fresh farm products...</p>
+    </div>
+    
+    <noscript>
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #425A8B;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        z-index: 9999;
+      ">
+        <h1 style="font-size: 2.5rem; margin-bottom: 20px;">⚠️ JavaScript Required</h1>
+        <p style="font-size: 1.2rem; max-width: 600px; margin-bottom: 30px;">
+          Dhaka Agro requires JavaScript to function properly. Please enable JavaScript in your browser settings to continue shopping.
+        </p>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+          <a href="/" style="
+            background: white;
+            color: #425A8B;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+          ">Refresh Page</a>
+          <a href="https://www.enable-javascript.com/" target="_blank" rel="noopener noreferrer" style="
+            background: transparent;
+            color: white;
+            padding: 12px 24px;
+            border: 2px solid white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+          ">How to Enable JavaScript</a>
+        </div>
+      </div>
+    </noscript>
+    
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+    
+    <!-- Service Worker Registration Script -->
+    <script>
+      // Show loading screen before React loads
+      document.addEventListener('DOMContentLoaded', function() {
+        const loadingElement = document.getElementById('app-loading');
+        const rootElement = document.getElementById('root');
+        
+        if (loadingElement && rootElement) {
+          // Show loading screen immediately
+          loadingElement.style.display = 'flex';
+          
+          // Hide loading screen when React app mounts
+          const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              if (mutation.type === 'childList' && rootElement.children.length > 0) {
+                loadingElement.style.display = 'none';
+                observer.disconnect();
+              }
+            });
+          });
+          
+          observer.observe(rootElement, { childList: true });
+        }
+      });
+      
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/service-worker.js').then(
+            function(registration) {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            },
+            function(err) {
+              console.log('ServiceWorker registration failed: ', err);
+            }
+          );
+        });
+      }
+      
+      // Handle offline/online status
+      window.addEventListener('online', function() {
+        document.body.classList.remove('offline');
+        // You could show a toast notification here
+        console.log('App is online');
+      });
+      
+      window.addEventListener('offline', function() {
+        document.body.classList.add('offline');
+        // You could show a toast notification here
+        console.log('App is offline');
+      });
+      
+      // Check initial network status
+      if (!navigator.onLine) {
+        document.body.classList.add('offline');
+      }
+    </script>
   </body>
 </html>

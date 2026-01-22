@@ -1,25 +1,31 @@
 {
-  "short_name": "dhakaagro",
-  "name": "Create React App Sample",
+  "short_name": "Dhaka Agro",
+  "name": "Dhaka Agro - Fresh Farm Products Online",
+  "description": "Get fresh vegetables, fruits, dairy products and groceries delivered to your doorstep in Dhaka",
   "icons": [
     {
-      "src": "Log2.png",
+      "src": "./Logo2.png",
       "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "type": "image/png"
     },
     {
-      "src": "Log2.png",
+      "src": "./Logo2.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "Log2.png",
+      "src": "./Logo2.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#425A8B",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["food", "shopping", "ecommerce"],
+  "lang": "en-US",
+  "dir": "ltr"
 }
